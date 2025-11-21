@@ -23,7 +23,7 @@ const ARCHETYPES = {
         finStyle: 'round',
         hasTeeth: false,
         color: '#ff7675', // Pinkish Red
-        baseSpeed: 100,
+        baseSpeed: 150, // Buffed from 100
         visionRadius: 150,
         fleeForce: 2,
         aggression: 0,
@@ -36,7 +36,7 @@ const ARCHETYPES = {
         finStyle: 'round',
         hasTeeth: false,
         color: '#a29bfe', // Purple
-        baseSpeed: 80,
+        baseSpeed: 130, // Buffed from 80
         visionRadius: 100,
         fleeForce: 1,
         aggression: 0,
@@ -49,10 +49,10 @@ const ARCHETYPES = {
         finStyle: 'spiky',
         hasTeeth: true,
         color: '#fab1a0', // Orange
-        baseSpeed: 180,
+        baseSpeed: 220, // Buffed from 180
         visionRadius: 250,
         fleeForce: 1,
-        aggression: 0.8,
+        aggression: 1.0, // Buffed from 0.8
         scaleRange: [0.4, 0.7],
         texture: 'spots'
     },
@@ -75,7 +75,7 @@ const ARCHETYPES = {
         finStyle: 'round',
         hasTeeth: true,
         color: '#2ed573', // Green
-        baseSpeed: 160,
+        baseSpeed: 200, // Buffed from 160
         visionRadius: 250, // Increased from 200
         fleeForce: 4,
         aggression: 0.7, // Increased from 0.5
@@ -105,7 +105,9 @@ const ARCHETYPES = {
         visionRadius: 300,
         fleeForce: 3,
         aggression: 0.6,
-        scaleRange: [1.0, 2.0]
+        scaleRange: [1.0, 2.0],
+        special: 'ink',
+        inkCooldown: 2.0 // Seconds (Automatic)
     },
     turtle: {
         name: 'Turtle',
@@ -113,7 +115,7 @@ const ARCHETYPES = {
         finStyle: 'round',
         hasTeeth: false,
         color: '#20bf6b', // Green
-        baseSpeed: 180, // Buffed from 140
+        baseSpeed: 200, // Buffed from 180
         visionRadius: 200,
         fleeForce: 2,
         aggression: 0.2, // Peaceful
@@ -850,6 +852,14 @@ class Player extends Fish {
     update(deltaTime, worldWidth, worldHeight) {
         this.time += deltaTime;
 
+        if (this.abilityCooldown > 0) this.abilityCooldown -= deltaTime;
+
+        // Automatic Ability Trigger
+        if (this.config.special === 'ink' && this.abilityCooldown <= 0) {
+            this.useAbility();
+        }
+
+        // Movement Logic
         let dx = 0;
         let dy = 0;
 
@@ -1287,15 +1297,49 @@ class Torpedo {
     }
 
     update(deltaTime) {
-        // Accelerate
-        this.vx *= 1.02;
+        // Homing Logic
+        let target = null;
+        let minDist = Infinity;
+        for (const p of players) {
+            const d = Math.hypot(p.x - this.x, p.y - this.y);
+            if (d < minDist) {
+                minDist = d;
+                target = p;
+            }
+        }
+
+        if (target) {
+            const dx = (target.x + target.width / 2) - this.x;
+            const dy = (target.y + target.height / 2) - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist > 0) {
+                // Desired velocity
+                const speed = 350; // Slightly faster than initial
+                const targetVx = (dx / dist) * speed;
+                const targetVy = (dy / dist) * speed;
+
+                // Steer towards target (Turn rate)
+                const turnRate = 2.0 * deltaTime;
+                this.vx += (targetVx - this.vx) * turnRate;
+                this.vy += (targetVy - this.vy) * turnRate;
+            }
+        }
+
+        // Normalize speed
+        const currentSpeed = Math.hypot(this.vx, this.vy);
+        if (currentSpeed > 0) {
+            const maxSpeed = 350;
+            this.vx = (this.vx / currentSpeed) * maxSpeed;
+            this.vy = (this.vy / currentSpeed) * maxSpeed;
+        }
+
         this.x += this.vx * deltaTime;
         this.y += this.vy * deltaTime;
-        this.timer += deltaTime;
 
         // Bubble trail
         if (Math.random() < 0.3) {
-            particles.push(new Particle(this.x, this.y + this.height / 2, 'rgba(255,255,255,0.5)', 1, 2));
+            particles.push(new Particle(this.x, this.y, 'rgba(255, 255, 255, 0.5)', 0, 2));
         }
     }
 
@@ -1348,10 +1392,66 @@ function createBubbles(worldWidth, worldHeight) {
     }
 }
 
+function spawnInk(x, y) {
+    const count = 20;
+    for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 100;
+        const vx = Math.cos(angle) * speed;
+        const vy = Math.sin(angle) * speed;
+        const size = 10 + Math.random() * 20;
+        const p = new Particle(x, y, 'rgba(50, 0, 50, 0.8)', 0, size); // Dark Purple
+        p.vx = vx;
+        p.vy = vy;
+        p.decay = 0.005; // Last longer
+        p.type = 'ink';
+        p.width = size; // For collision
+        p.height = size;
+        p.getBounds = function () { return { left: this.x - this.size, right: this.x + this.size, top: this.y - this.size, bottom: this.y + this.size }; };
+
+        // Override update for ink movement
+        p.update = function () {
+            this.x += this.vx * 0.016; // Approx dt
+            this.y += this.vy * 0.016;
+            this.vx *= 0.95; // Drag
+            this.vy *= 0.95;
+            this.alpha -= this.decay;
+        };
+
+        particles.push(p);
+    }
+}
+
+function createExplosion(x, y) {
+    const count = 30;
+    for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 150 + 50;
+        const vx = Math.cos(angle) * speed;
+        const vy = Math.sin(angle) * speed;
+        const size = 5 + Math.random() * 10;
+        const color = Math.random() < 0.5 ? '#ff9f43' : '#ff6b6b'; // Orange/Red
+
+        const p = new Particle(x, y, color, 0, size);
+        p.vx = vx;
+        p.vy = vy;
+        p.decay = 0.02;
+
+        // Physics update for explosion
+        p.update = function () {
+            this.x += this.vx * 0.016;
+            this.y += this.vy * 0.016;
+            this.alpha -= this.decay;
+        };
+
+        particles.push(p);
+    }
+}
+
 function createEatingEffect(x, y, color) {
     // Blood splatter effect!
-    const isBlood = color === '#ff6b6b' || color === '#ffe66d' || color === '#ff7f50' || color === '#e55039'; // Enemy or Player color
-    // Darker red for more realism
+    const isBlood = true; // Always bloody for visceral feel
+    const particleCount = 15; // Increased countmore realism
     const particleColor = isBlood ? 'rgba(180, 0, 0, 0.9)' : color;
     const count = isBlood ? 30 : 10; // Increased count
 
@@ -1508,6 +1608,14 @@ function updateGame(deltaTime, worldWidth, worldHeight) {
         particles[i].update();
         if (particles[i].alpha <= 0) {
             particles.splice(i, 1);
+        } else if (particles[i].type === 'ink') {
+            // Ink Logic: Slow down enemies
+            for (const enemy of enemies) {
+                if (checkCollision(particles[i], enemy)) {
+                    enemy.vx *= 0.9; // Slow down
+                    enemy.vy *= 0.9;
+                }
+            }
         }
     }
 
@@ -1528,9 +1636,11 @@ function updateGame(deltaTime, worldWidth, worldHeight) {
                 const player = players[k];
                 if (checkCollision(p, player)) {
                     // Player Hit!
+                    createExplosion(player.x, player.y); // Explosion Effect
                     createEatingEffect(player.x, player.y, player.color); // Blood
                     players.splice(k, 1); // Remove player
                     projectiles.splice(i, 1); // Remove torpedo
+                    soundManager.playExplosion();
 
                     // If no players left, Game Over
                     if (players.length === 0) {

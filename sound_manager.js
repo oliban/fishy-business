@@ -121,35 +121,15 @@ class SoundManager {
     playAmbient() {
         if (!this.initialized) return;
 
-        // Deep underwater drone
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-
-        osc.type = 'sine';
-        osc.frequency.value = 50;
-
-        // LFO for modulation
-        const lfo = this.ctx.createOscillator();
-        lfo.type = 'sine';
-        lfo.frequency.value = 0.2; // Slow wave
-        const lfoGain = this.ctx.createGain();
-        lfoGain.gain.value = 20;
-        lfo.connect(lfoGain);
-        lfoGain.connect(osc.frequency);
-
-        gain.gain.value = 0.1; // Quiet
-
-        osc.connect(gain);
-        gain.connect(this.masterGain);
-
-        // Stop previous ambient if any
+        // Stop previous ambient sound if it exists to prevent stacking
         if (this.ambientOsc) {
             try {
                 this.ambientOsc.stop();
-                this.ambientLfo.stop();
+                this.ambientOsc.disconnect();
             } catch (e) {
                 // Ignore if already stopped
             }
+            this.ambientOsc = null;
         }
 
         osc.start();
