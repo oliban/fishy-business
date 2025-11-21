@@ -208,7 +208,7 @@ function drawProceduralFish(ctx, x, y, width, height, color, angle, time, config
         // Shark Jaw (Animated)
         const hingeX = width * 0.1;
         const hingeY = height * 0.1;
-        const noseX = width * 0.6;
+        const noseX = width * 0.5; // Fixed: Match body tip (was 0.6)
         const noseY = -height * 0.1;
 
         // Calculate Lower Jaw Tip Position (Rotated)
@@ -313,11 +313,11 @@ function drawProceduralFish(ctx, x, y, width, height, color, angle, time, config
         // drawTexture(ctx, config.texture, width, height, color);
 
         // Mouth (Animated)
-        // Draw dark inside first
-        ctx.fillStyle = '#330000';
-        ctx.beginPath();
-        ctx.arc(0, 0, width * 0.35, 0, Math.PI * 2);
-        ctx.fill();
+        // REMOVED dark inside to prevent artifacts
+        // ctx.fillStyle = '#330000';
+        // ctx.beginPath();
+        // ctx.arc(0, 0, width * 0.35, 0, Math.PI * 2);
+        // ctx.fill();
 
         // Draw Body (Pacman)
         ctx.fillStyle = color;
@@ -514,12 +514,13 @@ function drawProceduralFish(ctx, x, y, width, height, color, angle, time, config
         ctx.fill();
 
         // Simple Mouth (Black Circle scaled)
-        if (jawOpen > 0) {
-            ctx.fillStyle = 'black';
-            ctx.beginPath();
-            ctx.arc(width * 0.4, 0, width * 0.1 * jawOpen, 0, Math.PI * 2);
-            ctx.fill();
-        }
+        // REMOVED to prevent artifacts
+        // if (jawOpen > 0) {
+        //     ctx.fillStyle = 'black';
+        //     ctx.beginPath();
+        //     ctx.arc(width * 0.4, 0, width * 0.1 * jawOpen, 0, Math.PI * 2);
+        //     ctx.fill();
+        // }
     }
 
     // 3. Fins (Generic, skip for Shark as it has custom)
@@ -808,6 +809,8 @@ class Player extends Fish {
     constructor(archetypeKey = 'shark', controls = { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' }, playerId = 1) {
         // Player Config
         let baseConfig = ARCHETYPES[archetypeKey];
+        console.log('Player constructor. Archetype:', archetypeKey);
+        console.log('Base Config:', JSON.stringify(baseConfig));
 
         // SAFETY CHECK: If archetype is invalid (e.g. typo or missing), fallback to shark
         if (!baseConfig) {
@@ -822,6 +825,7 @@ class Player extends Fish {
             visionRadius: 500, // Better vision
             aggression: 1
         };
+        console.log('Player Config constructed:', JSON.stringify(playerConfig));
 
         // Adjust speed for player control feel
         if (archetypeKey === 'shark') playerConfig.baseSpeed = 350;
@@ -843,10 +847,26 @@ class Player extends Fish {
             right: false
         };
         this.fishEaten = 0;
+        this.abilityCooldown = 0;
     }
 
     get level() {
         return Math.floor((this.width - 60) / 10) + 1;
+    }
+
+    useAbility() {
+        console.log('useAbility called. Special:', this.config.special, 'Cooldown:', this.abilityCooldown);
+        console.log('Full Config:', JSON.stringify(this.config));
+        if (this.config.special === 'ink' && this.abilityCooldown <= 0) {
+            console.log('Ink condition met! Spawning ink...');
+            spawnInk(this.x + this.width / 2, this.y + this.height / 2);
+            this.abilityCooldown = this.config.inkCooldown;
+            try {
+                soundManager.playInk();
+            } catch (e) {
+                console.error('Error playing ink sound:', e);
+            }
+        }
     }
 
     update(deltaTime, worldWidth, worldHeight) {
@@ -854,10 +874,10 @@ class Player extends Fish {
 
         if (this.abilityCooldown > 0) this.abilityCooldown -= deltaTime;
 
-        // Automatic Ability Trigger
-        if (this.config.special === 'ink' && this.abilityCooldown <= 0) {
-            this.useAbility();
-        }
+        // Automatic Ability Trigger REMOVED for manual control
+        // if (this.config.special === 'ink' && this.abilityCooldown <= 0) {
+        //     this.useAbility();
+        // }
 
         // Movement Logic
         let dx = 0;
@@ -868,8 +888,8 @@ class Player extends Fish {
         if (this.keys.left) dx -= 1;
         if (this.keys.right) dx += 1;
 
-        // Speed increases slightly with size to cover larger world
-        const currentSpeed = this.speed + (this.width - 60) * 0.5;
+        // Speed increases linearly with size to maintain screen-space speed
+        const currentSpeed = this.speed * (this.width / 60);
 
         if (dx !== 0 || dy !== 0) {
             const length = Math.sqrt(dx * dx + dy * dy);
@@ -1049,7 +1069,8 @@ class Enemy extends Fish {
                         this.x + this.width / 2,
                         this.y + this.height / 2,
                         vx,
-                        vy
+                        vy,
+                        this // Owner
                     ));
                     soundManager.playShoot();
                 }
@@ -1113,6 +1134,10 @@ window.addEventListener('keydown', (e) => {
         if (e.code === p.controls.down) p.keys.down = true;
         if (e.code === p.controls.left) p.keys.left = true;
         if (e.code === p.controls.right) p.keys.right = true;
+        if (e.code === 'Space') {
+            console.log('Space pressed for player', p.playerId);
+            p.useAbility();
+        }
     });
 });
 
@@ -1202,7 +1227,7 @@ function gameLoop(timestamp) {
     ctx.save();
     ctx.scale(cameraScale, cameraScale);
 
-    if (gameState === 'PLAYING') {
+    if (gameState === 'PLAYING' || gameState === 'DYING') {
         updateGame(deltaTime, worldWidth, worldHeight);
 
         // PvP Logic
@@ -1285,7 +1310,7 @@ class Particle {
 }
 
 class Torpedo {
-    constructor(x, y, vx, vy) {
+    constructor(x, y, vx, vy, owner) {
         this.x = x;
         this.y = y;
         this.vx = vx;
@@ -1294,9 +1319,15 @@ class Torpedo {
         this.height = 8;
         this.color = '#2d3436';
         this.timer = 0;
+        this.owner = owner;
     }
 
     update(deltaTime) {
+        this.timer += deltaTime;
+        if (this.timer > 7.0) {
+            return true; // Signal to explode
+        }
+
         // Homing Logic
         let target = null;
         let minDist = Infinity;
@@ -1341,6 +1372,8 @@ class Torpedo {
         if (Math.random() < 0.3) {
             particles.push(new Particle(this.x, this.y, 'rgba(255, 255, 255, 0.5)', 0, 2));
         }
+
+        return false;
     }
 
     draw() {
@@ -1483,7 +1516,7 @@ function spawnEnemy(worldWidth, worldHeight) {
         const largestPlayer = players.reduce((maxP, p) => (p.width > maxP.width ? p : maxP), players[0]);
         sizeFactor = (largestPlayer.width - 60) / 200; // 0 at start, increases as player grows
     }
-    const difficulty = Math.min(1.0, (score * 0.002) + sizeFactor); // Increased score impact + size factor
+    const difficulty = (score * 0.002) + sizeFactor; // Uncapped difficulty
 
     let archetypeKey;
     const roll = Math.random();
@@ -1526,7 +1559,7 @@ function spawnEnemy(worldWidth, worldHeight) {
     // Base size * random scale
     // Scale base size slightly with difficulty to keep challenge up
     const scale = config.scaleRange[0] + Math.random() * (config.scaleRange[1] - config.scaleRange[0]);
-    const baseSize = 60 * (1 + difficulty * 0.5); // Enemies get up to 50% bigger base size
+    const baseSize = 60 * (1 + difficulty * 0.8); // Enemies grow significantly with difficulty
     let width = baseSize * scale;
     let height = width * 0.6; // Aspect ratio
 
@@ -1622,7 +1655,18 @@ function updateGame(deltaTime, worldWidth, worldHeight) {
     // Update Projectiles
     for (let i = projectiles.length - 1; i >= 0; i--) {
         const p = projectiles[i];
-        p.update(deltaTime);
+        const shouldExplode = p.update(deltaTime);
+
+        if (shouldExplode) {
+            createExplosion(p.x, p.y);
+            try {
+                soundManager.playExplosion();
+            } catch (e) {
+                console.error('Error playing explosion sound:', e);
+            }
+            projectiles.splice(i, 1);
+            continue;
+        }
 
         // Remove if off screen
         if (p.x < -100 || p.x > worldWidth + 100) {
@@ -1640,7 +1684,11 @@ function updateGame(deltaTime, worldWidth, worldHeight) {
                     createEatingEffect(player.x, player.y, player.color); // Blood
                     players.splice(k, 1); // Remove player
                     projectiles.splice(i, 1); // Remove torpedo
-                    soundManager.playExplosion();
+                    try {
+                        soundManager.playExplosion();
+                    } catch (e) {
+                        console.error('Error playing explosion sound:', e);
+                    }
 
                     // If no players left, Game Over
                     if (players.length === 0) {
@@ -1648,6 +1696,26 @@ function updateGame(deltaTime, worldWidth, worldHeight) {
                     }
                     break; // Stop checking players for this torpedo
                 }
+            }
+        }
+
+        // Check Collision with Enemies (Torpedoes kill other fish too!)
+        for (let j = enemies.length - 1; j >= 0; j--) {
+            const enemy = enemies[j];
+            if (checkCollision(p, enemy)) {
+                // Submarine Fix: Don't hit owner immediately
+                if (p.owner === enemy && p.timer < 2.0) continue;
+
+                createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
+                createEatingEffect(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.color);
+                try {
+                    soundManager.playExplosion();
+                } catch (e) {
+                    console.error('Error playing explosion sound:', e);
+                }
+                enemies.splice(j, 1); // Kill enemy
+                projectiles.splice(i, 1); // Remove torpedo
+                break; // Stop checking enemies for this torpedo
             }
         }
     }
@@ -1694,14 +1762,22 @@ function updateGame(deltaTime, worldWidth, worldHeight) {
                     document.getElementById('score').textContent = score;
                     p.grow(enemy.width); // Pass prey size
                     createEatingEffect(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.color); // Yellow/Blood
-                    soundManager.playEat();
+                    try {
+                        soundManager.playEat();
+                    } catch (e) {
+                        console.error('Error playing eat sound:', e);
+                    }
                     enemies.splice(i, 1);
                     break; // Enemy eaten
                 } else {
                     if (gracePeriod <= 0) {
                         // Player Eaten!
                         createEatingEffect(p.x, p.y, p.color); // Blood
-                        soundManager.playHit();
+                        try {
+                            soundManager.playHit();
+                        } catch (e) {
+                            console.error('Error playing hit sound:', e);
+                        }
                         players.splice(k, 1); // Remove this player
 
                         // If no players left, Game Over
@@ -1761,21 +1837,29 @@ function getRandomArchetype() {
 }
 
 function startGame(p1Archetype, p2Archetype) {
-    soundManager.init();
-    soundManager.playStart();
-    soundManager.playAmbient();
+    console.log('startGame called with:', p1Archetype, p2Archetype);
+    try {
+        soundManager.init();
+        soundManager.playStart();
+        soundManager.playAmbient();
+    } catch (e) {
+        console.error('Audio initialization failed:', e);
+    }
 
     gameState = 'PLAYING';
+    console.log('gameState set to PLAYING');
     score = 0;
     document.getElementById('score').textContent = score;
     document.getElementById('start-screen').classList.add('hidden');
     document.getElementById('start-screen').classList.remove('active');
+    console.log('Start screen hidden');
     document.getElementById('game-over-screen').classList.add('hidden');
     document.getElementById('game-over-screen').classList.remove('active');
 
     players = [];
 
     // Use provided archetypes or fall back to random
+    //   const arch1 = 'octopus'; // FORCE OCTOPUS FOR DEBUGGING
     const arch1 = p1Archetype || getRandomArchetype();
     const arch2 = p2Archetype || getRandomArchetype();
 
@@ -1821,23 +1905,36 @@ function startGame(p1Archetype, p2Archetype) {
         requestAnimationFrame(gameLoop);
     }
 
-    initPatterns(); // Initialize textures
+    initPatterns();
 }
 
 function gameOver(winnerId = null) {
-    gameState = 'GAMEOVER';
+    if (gameState === 'DYING' || gameState === 'GAMEOVER') return;
 
-    let msg = `Score: ${score}`;
-    if (winnerId) {
-        msg = `Player ${winnerId} Wins!`;
-    }
+    console.log('Game Over triggered');
+    gameState = 'DYING';
+    deathTime = Date.now();
 
-    document.getElementById('final-score').textContent = msg;
-    document.getElementById('game-over-screen').classList.remove('hidden');
-    document.getElementById('game-over-screen').classList.add('active');
+    // Disable player controls/collision by effectively removing them from active play
+    // We keep them visible for the explosion effect though
 
-    // Reset selection UI for next game
-    document.getElementById('start-screen').classList.remove('hidden');
+    setTimeout(() => {
+        gameState = 'GAMEOVER';
+        const finalScore = Math.floor(score);
+        if (finalScore > highScore) {
+            highScore = finalScore;
+            localStorage.setItem('fishyBusinessHighScore', highScore);
+        }
+
+        document.getElementById('final-score').textContent = finalScore;
+        document.getElementById('high-score').textContent = highScore;
+        document.getElementById('game-over-screen').classList.remove('hidden');
+        document.getElementById('game-over-screen').style.display = 'flex'; // Use flex to make it visible
+        document.getElementById('game-over-screen').classList.add('active');
+
+        // Reset selection UI for next game
+        document.getElementById('start-screen').classList.remove('hidden');
+    }, 2000);
 }
 
 // UI Event Listeners
@@ -1852,19 +1949,19 @@ document.getElementById('restart-btn').addEventListener('click', () => {
 });
 
 window.addEventListener('keydown', (e) => {
-    if (gameState === 'START' || gameState === 'GAMEOVER') {
-        if (e.key === '1') {
-            gameMode = '1P';
-            startGame(getRandomArchetype());
-        } else if (e.key === '2') {
-            gameMode = '2P';
-            startGame(getRandomArchetype(), getRandomArchetype());
-        } else if (e.code === 'Enter' && gameState === 'GAMEOVER') {
-            // Restart with same mode
-            const randomP1 = getRandomArchetype();
-            const randomP2 = getRandomArchetype();
-            startGame(randomP1, gameMode === '2P' ? randomP2 : null);
-        }
+    if (e.key === '1') {
+        console.log('Key 1 pressed, starting 1P game...');
+        gameMode = '1P';
+        startGame(getRandomArchetype());
+    } else if (e.key === '2') {
+        console.log('Key 2 pressed, starting 2P game...');
+        gameMode = '2P';
+        startGame(getRandomArchetype(), getRandomArchetype());
+    } else if (gameState === 'GAMEOVER' && e.code === 'Enter') {
+        // Restart with same mode
+        const randomP1 = getRandomArchetype();
+        const randomP2 = getRandomArchetype();
+        startGame(randomP1, gameMode === '2P' ? randomP2 : null);
     }
 });
 
