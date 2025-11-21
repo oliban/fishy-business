@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fishy Business</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bubblegum+Sans&family=Outfit:wght@400;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="ui-layer">
+            <div id="score-board">Score: <span id="score">0</span></div>
+
+
+            <!-- Start Screen -->
+            <div id="start-screen" class="screen active">
+                <h1>Fishy Business</h1>
+
+                <div class="instructions">
+                    <p>Press <strong>1</strong> for Single Player</p>
+                    <p>Press <strong>2</strong> for Two Players</p>
+                </div>
+            </div>
+
+            <div id="game-over-screen" class="screen hidden">
+                <h1>Game Over</h1>
+                <p>Final Score: <span id="final-score">0</span></p>
+                <button id="restart-btn" class="btn">Play Again</button>
+            </div>
+        </div>
+    </div>
+    <script src="sound_manager.js"></script>
+    <script src="game.js"></script>
+</body>
+
+</html>

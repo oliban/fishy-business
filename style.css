@@ -1,0 +1,253 @@
+:root {
+    --primary-color: #ff7f50;
+    --secondary-color: #4ecdc4;
+    --accent-color: #ffe66d;
+    --text-color: #ffffff;
+    --font-heading: 'Bubblegum Sans', cursive;
+    --font-body: 'Outfit', sans-serif;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    user-select: none;
+}
+
+body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background-color: #001f3f;
+    /* Fallback */
+    font-family: var(--font-body);
+}
+
+#game-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+#ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    /* Let clicks pass through to canvas when playing */
+}
+
+#score-board {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    font-family: var(--font-heading);
+    font-size: 2rem;
+    color: var(--text-color);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    z-index: 10;
+}
+
+.screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(5px);
+    transition: opacity 0.3s ease;
+    pointer-events: auto;
+    /* Re-enable clicks for buttons */
+    z-index: 20;
+}
+
+.screen.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.screen.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+h1 {
+    font-family: var(--font-heading);
+    font-size: 5rem;
+    color: var(--primary-color);
+    text-shadow: 4px 4px 0px #000;
+    margin-bottom: 1rem;
+    animation: float 3s ease-in-out infinite;
+}
+
+p {
+    font-size: 1.5rem;
+    color: var(--text-color);
+    margin-bottom: 2rem;
+}
+
+.btn {
+    padding: 15px 40px;
+    font-family: var(--font-heading);
+    font-size: 2rem;
+    color: #fff;
+    background: linear-gradient(45deg, var(--primary-color), #ff6b6b);
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.btn:active {
+    transform: scale(0.95);
+}
+
+/* Mode Selection */
+.mode-selection {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+}
+
+.mode-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 0.5rem 1.5rem;
+    font-size: 1rem;
+}
+
+.mode-btn.selected {
+    background: #4ecdc4;
+    color: #000;
+    border-color: #4ecdc4;
+    box-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
+}
+
+/* Character Selection */
+.character-selection {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 2rem;
+    justify-content: center;
+}
+
+.char-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    padding: 2rem;
+    width: 220px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.char-card:hover {
+    transform: translateY(-5px);
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.char-card.selected {
+    background: rgba(78, 205, 196, 0.2);
+    border-color: #4ecdc4;
+    box-shadow: 0 0 20px rgba(78, 205, 196, 0.4);
+    transform: scale(1.05);
+}
+
+.char-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 1rem;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    /* Placeholder for procedural drawing or icon */
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 50%;
+}
+
+.char-card h2 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: #fff;
+}
+
+.char-card p {
+    font-size: 0.9rem;
+    color: #ccc;
+    margin-bottom: 1rem;
+}
+
+.stats {
+    list-style: none;
+    padding: 0;
+    text-align: left;
+    font-size: 0.85rem;
+}
+
+.stats li {
+    margin-bottom: 0.5rem;
+    display: flex;
+    justify-content: space-between;
+}
+
+.stats span.high {
+    color: #ff6b6b;
+    font-weight: bold;
+}
+
+.stats span.low {
+    color: #ffe66d;
+    font-weight: bold;
+}
+
+.stats span.special {
+    color: #4ecdc4;
+    font-weight: bold;
+    text-shadow: 0 0 5px #4ecdc4;
+}
+
+.stats span.neutral {
+    color: #ccc;
+}
+
+/* Button State */
+#start-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #555;
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}
