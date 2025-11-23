@@ -83,17 +83,18 @@ const ARCHETYPES = {
     },
     angler: {
         name: 'Angler Fish',
-        bodyShape: 'round',
+        bodyShape: 'angler', // New custom shape
         finStyle: 'spiky',
         hasTeeth: true,
-        color: '#5f27cd', // Dark Purple
-        baseSpeed: 300, // Buffed from 240
+        color: '#2d3436', // Dark Grey/Brown (Realism)
+        baseSpeed: 300,
         visionRadius: 400,
         fleeForce: 4,
         aggression: 0.9,
         scaleRange: [1.2, 2.5],
         special: 'lure',
-        lureRadius: 300
+        lureRadius: 300,
+        texture: 'scales' // Added texture
     },
     octopus: {
         name: 'Octopus',
@@ -165,7 +166,13 @@ const ARCHETYPES = {
 };
 
 // Procedural Drawing Helper
-function drawProceduralFish(ctx, x, y, width, height, color, angle, time, config, jawOpen = 0) {
+// Helper for deterministic randomness
+function seededRandom(seed) {
+    const x = Math.sin(seed++) * 10000;
+    return x - Math.floor(x);
+}
+
+function drawProceduralFish(ctx, x, y, width, height, color, angle, time, config, jawOpen = 0, id = 0) {
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
@@ -439,29 +446,78 @@ function drawProceduralFish(ctx, x, y, width, height, color, angle, time, config
         ctx.restore();
 
     } else if (config.bodyShape === 'catfish') {
-        // --- CATFISH ---
-        // Body
-        ctx.fillStyle = color;
+        // --- CATFISH (REFINED) ---
+        // 1. Body (Tadpole/Teardrop shape)
+        const headX = width * 0.2;
+        const tailX = -width * 0.5;
+
+        // Gradient for smooth look
+        const grd = ctx.createLinearGradient(0, -height / 2, 0, height / 2);
+        grd.addColorStop(0, '#e1b12c'); // Base
+        grd.addColorStop(1, '#cd6133'); // Darker belly
+
+        ctx.fillStyle = grd;
         ctx.beginPath();
-        ctx.ellipse(0, 0, width * 0.45, height * 0.3, 0, 0, Math.PI * 2);
+        // Head (Broad and flat)
+        ctx.moveTo(headX, -height * 0.2);
+        ctx.quadraticCurveTo(width * 0.5, 0, headX, height * 0.2); // Snout
+        // Bottom contour
+        ctx.quadraticCurveTo(0, height * 0.4, tailX, height * 0.1);
+        // Tail base
+        ctx.lineTo(tailX, -height * 0.1);
+        // Top contour
+        ctx.quadraticCurveTo(0, -height * 0.4, headX, -height * 0.2);
         ctx.fill();
 
-        // Textures
-        drawTexture(ctx, config.texture, width, height, color);
+        // 2. Textures (Mottled spots)
+        drawTexture(ctx, config.texture, width, height, 'rgba(0,0,0,0.1)');
 
-        // Whiskers
+        // 3. Whiskers (Barbels) - Long and flowing
         ctx.strokeStyle = '#2d3436';
         ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+
+        // Dynamic whisker movement
+        const whiskerWave = Math.sin(time * 4) * 10;
+
         ctx.beginPath();
-        // Left Whisker
-        ctx.moveTo(width * 0.4, 0);
-        ctx.quadraticCurveTo(width * 0.6, -height * 0.5, width * 0.5, -height * 0.8);
+        // Left Whisker (Long)
+        ctx.moveTo(headX, -height * 0.1);
+        ctx.bezierCurveTo(
+            headX + 20, -height * 0.5,
+            headX + 40, -height * 0.8 + whiskerWave,
+            headX + 60, -height * 0.6 + whiskerWave
+        );
         ctx.stroke();
-        // Right Whisker
+
+        // Right Whisker (Long)
         ctx.beginPath();
-        ctx.moveTo(width * 0.4, 0);
-        ctx.quadraticCurveTo(width * 0.6, height * 0.5, width * 0.5, height * 0.8);
+        ctx.moveTo(headX, height * 0.1);
+        ctx.bezierCurveTo(
+            headX + 20, height * 0.5,
+            headX + 40, height * 0.8 + whiskerWave,
+            headX + 60, height * 0.6 + whiskerWave
+        );
         ctx.stroke();
+
+        // Short whiskers (inner)
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(headX + 5, -height * 0.05);
+        ctx.quadraticCurveTo(headX + 15, -height * 0.2, headX + 25, -height * 0.15);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(headX + 5, height * 0.05);
+        ctx.quadraticCurveTo(headX + 15, height * 0.2, headX + 25, height * 0.15);
+        ctx.stroke();
+
+        // 4. Eyes (Small, wide set)
+        ctx.fillStyle = 'black';
+        ctx.beginPath();
+        ctx.arc(headX - width * 0.1, -height * 0.15, 3, 0, Math.PI * 2); // Left
+        ctx.arc(headX - width * 0.1, height * 0.15, 3, 0, Math.PI * 2); // Right
+        ctx.fill();
 
     } else if (config.bodyShape === 'diver') {
         // --- DIVER ---
@@ -500,9 +556,173 @@ function drawProceduralFish(ctx, x, y, width, height, color, angle, time, config
         ctx.lineTo(width * 0.1, height * 0.4);
         ctx.fill();
 
+    } else if (config.bodyShape === 'angler') {
+        // --- ANGLERFISH (NIGHTMARE OVERHAUL - EXAGGERATED) ---
+        // 1. Body (Lumpy, Blobby, Tapering)
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        // Start at nose (Upper Lip)
+        const noseX = width * 0.4;
+        const noseY = -height * 0.15;
+        ctx.moveTo(noseX, noseY);
+
+        // Top head (HUGE Hump)
+        ctx.bezierCurveTo(width * 0.2, -height * 0.9, -width * 0.2, -height * 1.0, -width * 0.5, -height * 0.2);
+
+        // Tail base (Narrow)
+        ctx.lineTo(-width * 0.7, 0);
+        ctx.lineTo(-width * 0.5, height * 0.2);
+
+        // Belly (Sagging and distended)
+        // Extend belly PAST the hinge to cover it (Throat)
+        const throatX = -width * 0.05; // Moved left
+        const throatY = height * 0.25;
+        ctx.bezierCurveTo(-width * 0.2, height * 0.9, width * 0.1, height * 0.8, throatX, throatY);
+
+        // Mouth Roof (The Upper Jaw Line) - Curve back to nose
+        // Control point for the roof
+        const roofCpX = width * 0.2;
+        const roofCpY = -height * 0.05;
+        ctx.quadraticCurveTo(roofCpX, roofCpY, noseX, noseY);
+
+        ctx.fill();
+
+        // 2. Textures (Subtle Skin Blemishes)
+        ctx.fillStyle = 'rgba(0,0,0,0.15)';
+        for (let i = 0; i < 8; i++) {
+            // Use seeded random for consistent warts
+            const r1 = seededRandom(id + i * 10);
+            const r2 = seededRandom(id + i * 10 + 1);
+            const r3 = seededRandom(id + i * 10 + 2);
+
+            const lx = (r1 - 0.5) * width * 0.6;
+            const ly = (r2 - 0.5) * height * 0.6;
+            const lSize = r3 * width * 0.06 + 2;
+            ctx.beginPath();
+            ctx.arc(lx, ly, lSize, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Upper Lip Line (Visual connection for teeth)
+        ctx.strokeStyle = '#1e272e'; // Darker line
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(noseX, noseY);
+        // Hinge is now "inside", so we curve towards the throat/hinge area
+        // Let's define the Hinge slightly inside/above the throat
+        const hingeX = -width * 0.05; // Moved left to match throat
+        const hingeY = height * 0.15;
+
+        ctx.quadraticCurveTo(roofCpX, roofCpY, hingeX, hingeY);
+        ctx.stroke();
+
+        // 3. The Lure (Illicium)
+        const lureStartX = width * 0.2; // Forehead
+        const lureStartY = -height * 0.5; // Lower down to sink into the head
+        const lureEndX = width * 0.7;
+        const lureEndY = -height * 1.0;
+
+        // Stalk (Thin, wire-like)
+        ctx.strokeStyle = '#111';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(lureStartX, lureStartY);
+        // S-curve for organic feel
+        ctx.bezierCurveTo(width * 0.25, -height * 1.2, width * 0.6, -height * 0.8, lureEndX, lureEndY);
+        ctx.stroke();
+
+        // Bulb (Esca)
+        const glowRadius = width * 1.2 + Math.sin(time * 3) * 15;
+        const glow = ctx.createRadialGradient(lureEndX, lureEndY, 2, lureEndX, lureEndY, glowRadius);
+        glow.addColorStop(0, 'rgba(220, 255, 255, 1.0)');
+        glow.addColorStop(0.3, 'rgba(0, 200, 255, 0.3)');
+        glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(lureEndX, lureEndY, glowRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(lureEndX, lureEndY, width * 0.06, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 4. Jaw & Teeth (Chaotic Needles)
+        const jawAngle = 0.3 + jawOpen * 0.6;
+
+        // Lower Jaw (Huge, heavy bone)
+        ctx.save();
+        ctx.translate(hingeX, hingeY); // Pivot from INSIDE the body
+        ctx.rotate(jawAngle);
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        // Start well behind the hinge to ensure overlap
+        ctx.moveTo(-width * 0.1, -height * 0.1);
+        // Heavy chin
+        ctx.quadraticCurveTo(width * 0.3, height * 0.6, width * 0.7, -height * 0.1);
+        // Gum line (Uneven)
+        ctx.lineTo(width * 0.5, 0);
+        ctx.quadraticCurveTo(width * 0.25, height * 0.1, 0, 0);
+        ctx.fill();
+
+        // Lower Teeth (Chaotic, Long, Needle-like)
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        for (let i = 0; i < 8; i++) {
+            const t = i / 7;
+            const tx = width * 0.05 + t * (width * 0.6);
+            const ty = Math.sin(t * Math.PI) * (height * 0.05);
+
+            // EXAGGERATED CHAOS - SEEDED
+            const r1 = seededRandom(id + i * 20);
+            const r2 = seededRandom(id + i * 20 + 1);
+
+            const len = height * 0.35 + r1 * height * 0.25;
+            const angleVar = (r2 - 0.5) * 0.8; // More tilt
+
+            ctx.beginPath();
+            ctx.moveTo(tx, ty);
+            ctx.lineTo(tx + Math.sin(angleVar) * 15, ty - len);
+            ctx.lineTo(tx - 3, ty); // Back to base
+            ctx.fill();
+        }
+        ctx.restore();
+
+        // Upper Teeth (Chaotic & Aligned)
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        for (let i = 0; i < 7; i++) {
+            // Interpolate along the mouth roof curve using Quadratic Bezier formula
+            // P(t) = (1-t)^2 * P0 + 2(1-t)t * P1 + t^2 * P2
+            // We want teeth from nose (t=1) to throat (t=0) or vice versa.
+            // Let's go from nose back to throat to match index direction
+            const T = 1 - (i / 6);
+            const invT = 1 - T;
+
+            const tx = (invT * invT * hingeX) + (2 * invT * T * roofCpX) + (T * T * noseX);
+            const ty = (invT * invT * hingeY) + (2 * invT * T * roofCpY) + (T * T * noseY);
+
+            // SEEDED CHAOS
+            const r1 = seededRandom(id + i * 30);
+            const r2 = seededRandom(id + i * 30 + 1);
+
+            const len = height * 0.3 + r1 * height * 0.2;
+            const angleVar = (r2 - 0.5) * 0.5;
+
+            ctx.beginPath();
+            ctx.moveTo(tx, ty);
+            ctx.lineTo(tx + Math.sin(angleVar) * 10, ty + len);
+            ctx.lineTo(tx - 3, ty - 2);
+            ctx.fill();
+        }
+
+        // 5. Eyes (Tiny, milky, barely visible)
+        ctx.fillStyle = '#95a5a6';
+        ctx.beginPath();
+        ctx.arc(width * 0.15, -height * 0.3, width * 0.03, 0, Math.PI * 2);
+        ctx.fill();
+
     } else if (config.bodyShape === 'submarine') {
         // --- SUBMARINE ---
-        ctx.fillStyle = color;
         // Main Hull
         ctx.beginPath();
         ctx.ellipse(0, 0, width * 0.6, height * 0.25, 0, 0, Math.PI * 2);
@@ -601,8 +821,8 @@ function drawProceduralFish(ctx, x, y, width, height, color, angle, time, config
         }
     }
 
-    // Angler Lure
-    if (config.special === 'lure') {
+    // Angler Lure (Generic fallback, skip for custom Angler body)
+    if (config.special === 'lure' && config.bodyShape !== 'angler') {
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -1158,6 +1378,7 @@ class Enemy extends Fish {
         if (closestPredator) {
             this.maxSpeed = this.speed * 1.5; // Reset speed
             this.flee(closestPredator.x + closestPredator.width / 2, closestPredator.y + closestPredator.height / 2);
+            this.jawOpen -= 0.1; // Close mouth when fleeing
         } else if (closestPrey) {
             // Hunting Frenzy for Sharks
             if (this.config.bodyShape === 'shark') {
@@ -1167,8 +1388,16 @@ class Enemy extends Fish {
             }
             // Use Pursuit for hunting
             this.pursue(closestPrey);
+
+            // Open Jaw when close!
+            if (minPreyDist < 200) { // Increased from 150
+                this.jawOpen += 0.1; // Slower opening for smoother animation
+            } else {
+                this.jawOpen -= 0.1;
+            }
         } else {
             this.maxSpeed = this.speed * 1.5; // Reset speed
+            // Normal Wander
             // Normal Wander
             if (this.config.special !== 'sink' && this.config.special !== 'torpedo') {
                 this.wander(deltaTime);
@@ -1182,6 +1411,9 @@ class Enemy extends Fish {
                     let target = null;
                     let minDist = Infinity;
                     for (const p of players) {
+                        // STEALTH CHECK: Don't aim at invisible players
+                        if (p.alpha < 0.9) continue;
+
                         const d = Math.hypot(p.x - this.x, p.y - this.y);
                         if (d < minDist) {
                             minDist = d;
@@ -1217,34 +1449,33 @@ class Enemy extends Fish {
                     soundManager.playShoot();
                 }
             }
+            this.jawOpen -= 0.1; // Close mouth when wandering
+        }
+        this.jawOpen = Math.max(0, Math.min(1, this.jawOpen));
 
-            // SHARK BURP LOGIC (Enemy)
-            if (this.burpTimer > 0) {
-                this.burpTimer -= deltaTime;
-                if (this.burpTimer <= 0) {
-                    // BURP!
-                    try { soundManager.playBurp(); } catch (e) { }
+        // SHARK BURP LOGIC (Enemy)
+        if (this.burpTimer > 0) {
+            this.burpTimer -= deltaTime;
+            if (this.burpTimer <= 0) {
+                // BURP!
+                try { soundManager.playBurp(); } catch (e) { }
 
-                    // Fire Torpedo
-                    // Visuals (Bubbles)
-                    for (let i = 0; i < 8; i++) {
-                        particles.push(new Particle(
-                            this.x + this.width / 2 + (this.facingRight ? this.width / 2 : -this.width / 2),
-                            this.y + this.height / 2,
-                            '#00ffff', // Cyan
-                            Math.random() * 2 + 1, // Speed
-                            Math.random() * 3 + 2  // Size
-                        ));
-                    }
-                    const vx = this.vx > 0 ? 400 : -400; // Fire in direction of movement
-                    projectiles.push(new Torpedo(
-                        this.x + this.width / 2 + (this.vx > 0 ? this.width / 2 : -this.width / 2),
+                // Fire Torpedo
+                // Visuals (Bubbles)
+                for (let i = 0; i < 8; i++) {
+                    particles.push(new Particle(
+                        this.x + this.width / 2 + (this.facingRight ? this.width / 2 : -this.width / 2),
                         this.y + this.height / 2,
-                        vx,
-                        0, // Straight ahead
-                        this
+                        '#00ffff', // Cyan
+                        Math.random() * 2 + 1, // Speed
+                        Math.random() * 3 + 2  // Size
                     ));
                 }
+                const vx = this.vx > 0 ? 400 : -400; // Fire in direction of movement
+                projectiles.push(new Torpedo(
+                    this.x + this.width / 2 + (this.vx > 0 ? this.width / 2 : -this.width / 2),
+                    this.y + this.height / 2,
+                ));
             }
         }
 
@@ -1502,14 +1733,27 @@ class Torpedo {
         // Homing Logic
         let target = null;
         let minDist = Infinity;
-        for (const p of players) {
-            // STEALTH CHECK: Ignore invisible targets
-            if (p.alpha < 0.9) continue;
 
-            const d = Math.hypot(p.x - this.x, p.y - this.y);
+        // Determine potential targets based on owner
+        let potentialTargets = [];
+        if (this.owner && this.owner.type === 'player') {
+            potentialTargets = enemies;
+        } else {
+            potentialTargets = players;
+        }
+
+        for (const t of potentialTargets) {
+            // Don't track owner (just in case)
+            if (t === this.owner) continue;
+
+            // STEALTH CHECK: Ignore invisible targets
+            // Check alpha property (Enemy sets it on players, Player has it too)
+            if (t.alpha !== undefined && t.alpha < 0.9) continue;
+
+            const d = Math.hypot(t.x - this.x, t.y - this.y);
             if (d < minDist) {
                 minDist = d;
-                target = p;
+                target = t;
             }
         }
 
