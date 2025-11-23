@@ -269,6 +269,57 @@ class SoundManager {
             console.error('Error in playAmbient:', e);
         }
     }
+    playBurp() {
+        if (!this.initialized) return;
+        const t = this.ctx.currentTime;
+
+        // 1. Low Sawtooth (The "Burp" tone)
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, t);
+        osc.frequency.exponentialRampToValueAtTime(50, t + 0.4); // Pitch drop
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(400, t);
+        filter.frequency.linearRampToValueAtTime(100, t + 0.4);
+
+        gain.gain.setValueAtTime(0.5, t);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGain);
+
+        osc.start(t);
+        osc.stop(t + 0.4);
+
+        // 2. Noise (Texture)
+        const bufferSize = this.ctx.sampleRate * 0.4;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+        }
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+        const noiseGain = this.ctx.createGain();
+        const noiseFilter = this.ctx.createBiquadFilter();
+
+        noiseFilter.type = 'bandpass';
+        noiseFilter.frequency.value = 200;
+
+        noiseGain.gain.setValueAtTime(0.3, t);
+        noiseGain.gain.linearRampToValueAtTime(0, t + 0.4);
+
+        noise.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        noiseGain.connect(this.masterGain);
+        noise.start(t);
+    }
 }
 
 const soundManager = new SoundManager();

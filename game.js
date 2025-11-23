@@ -23,7 +23,7 @@ const ARCHETYPES = {
         finStyle: 'round',
         hasTeeth: false,
         color: '#ff7675', // Pinkish Red
-        baseSpeed: 150, // Buffed from 100
+        baseSpeed: 250, // Buffed from 200
         visionRadius: 150,
         fleeForce: 2,
         aggression: 0,
@@ -36,7 +36,7 @@ const ARCHETYPES = {
         finStyle: 'round',
         hasTeeth: false,
         color: '#a29bfe', // Purple
-        baseSpeed: 130, // Buffed from 80
+        baseSpeed: 240, // Buffed from 180
         visionRadius: 100,
         fleeForce: 1,
         aggression: 0,
@@ -49,7 +49,7 @@ const ARCHETYPES = {
         finStyle: 'spiky',
         hasTeeth: true,
         color: '#fab1a0', // Orange
-        baseSpeed: 220, // Buffed from 180
+        baseSpeed: 300, // Buffed from 220
         visionRadius: 250,
         fleeForce: 1,
         aggression: 1.0, // Buffed from 0.8
@@ -62,10 +62,10 @@ const ARCHETYPES = {
         finStyle: 'spiky',
         hasTeeth: true,
         color: '#636e72', // Grey
-        baseSpeed: 160,
-        visionRadius: 400,
+        baseSpeed: 220, // Buffed from 160
+        visionRadius: 600, // Buffed from 400
         fleeForce: 0,
-        aggression: 0.5,
+        aggression: 1.0, // Buffed from 0.5
         scaleRange: [1.5, 2.5],
         texture: 'stripes'
     },
@@ -75,7 +75,7 @@ const ARCHETYPES = {
         finStyle: 'round',
         hasTeeth: true,
         color: '#2ed573', // Green
-        baseSpeed: 200, // Buffed from 160
+        baseSpeed: 280, // Buffed from 200
         visionRadius: 250, // Increased from 200
         fleeForce: 4,
         aggression: 0.7, // Increased from 0.5
@@ -87,7 +87,7 @@ const ARCHETYPES = {
         finStyle: 'spiky',
         hasTeeth: true,
         color: '#5f27cd', // Dark Purple
-        baseSpeed: 180, // Slower than Shark
+        baseSpeed: 300, // Buffed from 240
         visionRadius: 400,
         fleeForce: 4,
         aggression: 0.9,
@@ -101,7 +101,7 @@ const ARCHETYPES = {
         finStyle: 'round',
         hasTeeth: true, // Beak
         color: '#ff4757', // Red/Pink
-        baseSpeed: 200,
+        baseSpeed: 320, // Buffed from 260
         visionRadius: 300,
         fleeForce: 3,
         aggression: 0.6,
@@ -115,7 +115,7 @@ const ARCHETYPES = {
         finStyle: 'round',
         hasTeeth: false,
         color: '#20bf6b', // Green
-        baseSpeed: 200, // Buffed from 180
+        baseSpeed: 250, // Buffed from 200
         visionRadius: 200,
         fleeForce: 2,
         aggression: 0.2, // Peaceful
@@ -128,7 +128,7 @@ const ARCHETYPES = {
         finStyle: 'round',
         hasTeeth: false,
         color: '#e1b12c', // Mustard
-        baseSpeed: 220,
+        baseSpeed: 225, // Reduced from 280 (20% slower)
         visionRadius: 300,
         fleeForce: 3,
         aggression: 0.4,
@@ -142,7 +142,7 @@ const ARCHETYPES = {
         finStyle: 'none',
         hasTeeth: false,
         color: '#0984e3', // Blue suit
-        baseSpeed: 50,
+        baseSpeed: 80, // Buffed from 50
         visionRadius: 100,
         fleeForce: 0,
         aggression: 0,
@@ -155,7 +155,7 @@ const ARCHETYPES = {
         finStyle: 'none',
         hasTeeth: false,
         color: '#2d3436', // Dark Grey
-        baseSpeed: 100,
+        baseSpeed: 150, // Buffed from 100
         visionRadius: 600,
         fleeForce: 0,
         aggression: 1.0,
@@ -193,111 +193,134 @@ function drawProceduralFish(ctx, x, y, width, height, color, angle, time, config
 
     // 2. Draw Body & Jaws
     if (config.bodyShape === 'shark') {
-        // Shark Body
-        ctx.fillStyle = color;
+        // --- REALISTIC SHARK MODEL (REFINED V2) ---
+
+        // 1. Body (Fusiform Shape - EVEN BIGGER HEAD)
+        const noseX = width * 0.65; // Massive head
+        const tailBaseX = -width * 0.4;
+        const bodyTopY = -height * 0.5; // Thicker top
+        const bodyBottomY = height * 0.5; // Thicker bottom
+
+        // Gradient (Shared with fins for seamless look)
+        const grd = ctx.createLinearGradient(0, -height * 0.6, 0, height * 0.6);
+        grd.addColorStop(0, '#2d3436');
+        grd.addColorStop(0.4, config.color);
+        grd.addColorStop(1, '#b2bec3');
+
+        ctx.fillStyle = grd;
+
+        // Draw Body AND Dorsal Fin in one path for perfect connection
         ctx.beginPath();
-        ctx.moveTo(width * 0.5, 0);
-        ctx.quadraticCurveTo(width * 0.2, -height * 0.5, -width * 0.4, -height * 0.3);
-        ctx.lineTo(-width * 0.4, height * 0.3);
-        ctx.quadraticCurveTo(width * 0.2, height * 0.5, width * 0.5, 0);
+        ctx.moveTo(noseX, 0);
+
+        // Top contour to Fin Base Front
+        // Control point pushed forward for bulky head
+        ctx.quadraticCurveTo(width * 0.3, bodyTopY, width * 0.1, -height * 0.4);
+
+        // DORSAL FIN (Integrated)
+        // Up to tip
+        ctx.quadraticCurveTo(0, -height * 1.0, -width * 0.15, -height * 0.9);
+        // Down to back base
+        ctx.quadraticCurveTo(-width * 0.05, -height * 0.45, -width * 0.15, -height * 0.35);
+
+        // Continue Top contour to tail
+        ctx.quadraticCurveTo(-width * 0.3, -height * 0.2, tailBaseX, -height * 0.15);
+
+        // Tail base
+        ctx.lineTo(tailBaseX, height * 0.15);
+
+        // Bottom contour
+        ctx.quadraticCurveTo(width * 0.3, bodyBottomY, noseX, 0);
         ctx.fill();
 
-        // Textures
-        // drawTexture(ctx, config.texture, width, height, color);
+        // 2. Tail (Heterocercal)
+        const tailTipX = -width * 0.9;
+        const tailTopY = -height * 0.7;
+        const tailBottomY = height * 0.5;
 
-        // Shark Jaw (Animated)
-        const hingeX = width * 0.1;
-        const hingeY = height * 0.1;
-        const noseX = width * 0.5; // Fixed: Match body tip (was 0.6)
-        const noseY = -height * 0.1;
-
-        // Calculate Lower Jaw Tip Position (Rotated)
-        const jawLength = width * 0.4;
-        const jawAngle = jawOpen * 0.5; // Rotation angle
-        // Local tip relative to hinge
-        const localTipX = Math.cos(jawAngle) * jawLength;
-        const localTipY = Math.sin(jawAngle) * jawLength;
-        // Global tip
-        const lowerJawTipX = hingeX + localTipX;
-        const lowerJawTipY = hingeY + localTipY;
-
-        // Draw Mouth Interior (Darkness behind jaws)
-        // Use CLIPPING to prevent "black triangle" artifacts
         ctx.save();
+        ctx.translate(tailBaseX, 0);
+        ctx.rotate(tailWag * 0.5);
+        ctx.fillStyle = config.color; // Tail can be solid or gradient? Let's stick to solid for now to avoid complex gradient rotation
         ctx.beginPath();
-        ctx.moveTo(hingeX, hingeY);
-        ctx.lineTo(noseX, noseY);
-        ctx.quadraticCurveTo(width * 0.3, -height * 0.7, -width * 0.4, -height * 0.2);
-        ctx.lineTo(-width * 0.4, height * 0.2);
-        ctx.quadraticCurveTo(0, height * 0.5, hingeX, hingeY + height * 0.1);
-        ctx.clip(); // Clip to head shape
-
-        // Only draw if mouth is actually open
-        if (jawOpen > 0.05) {
-            ctx.fillStyle = '#4a0d0d'; // Dark Red
-            ctx.beginPath();
-            ctx.moveTo(hingeX, hingeY);
-            ctx.lineTo(noseX - width * 0.1, noseY + height * 0.2);
-            ctx.lineTo(lowerJawTipX, lowerJawTipY);
-            ctx.fill();
-        }
+        ctx.moveTo(0, -height * 0.15);
+        ctx.quadraticCurveTo(-width * 0.2, -height * 0.5, tailTipX - tailBaseX, tailTopY);
+        ctx.lineTo((tailTipX - tailBaseX) * 0.8, 0);
+        ctx.lineTo((tailTipX - tailBaseX) * 0.7, tailBottomY);
+        ctx.quadraticCurveTo(-width * 0.1, height * 0.3, 0, height * 0.15);
+        ctx.fill();
         ctx.restore();
 
-        // Lower Jaw (Rotated)
+        // 3. Fins - ONLY DORSAL (Already drawn)
+        // REMOVED Pectoral and Pelvic fins
+
+        // 4. Gills
+        ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 4; i++) {
+            const gx = width * 0.15 - (i * width * 0.035); // Moved forward with head
+            ctx.beginPath();
+            ctx.moveTo(gx, -height * 0.15);
+            ctx.quadraticCurveTo(gx - 3, 0, gx, height * 0.15);
+            ctx.stroke();
+        }
+
+        // Textures
+        drawTexture(ctx, config.texture, width, height, 'rgba(0,0,0,0.1)');
+
+        // 5. Jaw & Teeth (BIGGER & WIDER OPENING)
+        const hingeX = width * 0.15; // Moved forward
+        const hingeY = height * 0.2;
+        const jawLength = width * 0.45; // Even longer
+        const jawAngle = jawOpen * 1.0; // WIDE OPEN (was 0.6)
+
+        // Mouth Interior (Dark Red - Throat Hole)
+        if (jawOpen > 0.05) {
+            ctx.fillStyle = '#2d0a0a'; // Very dark red
+            ctx.beginPath();
+            // Draw a small ellipse for the throat, slightly behind the hinge
+            ctx.ellipse(hingeX + width * 0.05, hingeY, width * 0.08, height * 0.15, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Lower Jaw
         ctx.save();
         ctx.translate(hingeX, hingeY);
-        ctx.rotate(jawAngle); // Rotate down
-        ctx.fillStyle = color;
+        ctx.rotate(jawAngle);
+        ctx.fillStyle = '#b2bec3';
         ctx.beginPath();
-        ctx.moveTo(0, 0); // Hinge (local 0,0)
-        ctx.quadraticCurveTo(width * 0.2, height * 0.1, width * 0.4, 0); // Jaw line
-        ctx.lineTo(width * 0.35, height * 0.15); // Chin
-        ctx.quadraticCurveTo(width * 0.1, height * 0.2, 0, height * 0.1); // Jaw bottom
+        ctx.moveTo(0, 0);
+        ctx.quadraticCurveTo(jawLength * 0.5, height * 0.15, jawLength, 0);
+        ctx.lineTo(jawLength * 0.8, height * 0.2);
+        ctx.quadraticCurveTo(jawLength * 0.2, height * 0.25, 0, height * 0.1);
         ctx.fill();
 
-        // Teeth (Lower) - Attached to Lower Jaw
+        // Lower Teeth (BIGGER & CONNECTED)
         if (config.hasTeeth && jawOpen > 0.1) {
-            // Gums (Lower)
-            ctx.strokeStyle = '#e55039'; // Pinkish Red
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(width * 0.1, 0);
-            ctx.quadraticCurveTo(width * 0.25, height * 0.05, width * 0.4, 0);
-            ctx.stroke();
-
-            // Teeth
             ctx.fillStyle = 'white';
-            for (let i = 0; i < 3; i++) {
-                const tx = width * 0.15 + (i * width * 0.08);
-                const ty = 0; // Rooted on the line
+            for (let i = 0; i < 4; i++) {
+                const tx = jawLength * 0.25 + (i * jawLength * 0.18);
                 ctx.beginPath();
-                ctx.moveTo(tx, ty);
-                ctx.lineTo(tx + 3, ty - 10); // Point up (Longer: 10px)
-                ctx.lineTo(tx + 6, ty);
+                // Start slightly BELOW the jaw line (y=0) to ensure connection
+                ctx.moveTo(tx, 2);
+                ctx.lineTo(tx + 4, -16); // Point Up
+                ctx.lineTo(tx + 8, 2);
                 ctx.fill();
             }
         }
         ctx.restore();
 
-        // Teeth (Upper) - Attached to Head (Static relative to head)
+        // Upper Teeth (BIGGER & CONNECTED)
         if (config.hasTeeth && jawOpen > 0.1) {
-            // Gums (Upper)
-            ctx.strokeStyle = '#e55039'; // Pinkish Red
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(hingeX, hingeY);
-            ctx.lineTo(noseX, noseY);
-            ctx.stroke();
-
-            // Teeth
             ctx.fillStyle = 'white';
-            for (let i = 0; i < 3; i++) {
-                const tx = width * 0.3 + (i * width * 0.08);
-                const ty = noseY + (tx - width * 0.3) * 0.2 + 8; // Follow slope, slightly lower
+            for (let i = 0; i < 4; i++) {
+                const tx = width * 0.25 + (i * width * 0.08);
+                const ty = height * 0.1;
                 ctx.beginPath();
-                ctx.moveTo(tx, ty - 2); // Rooted slightly up in gum
-                ctx.lineTo(tx + 3, ty + 10); // Point down (Longer: 10px)
-                ctx.lineTo(tx + 6, ty - 2);
+                // Start slightly ABOVE the gum line to ensure connection
+                ctx.moveTo(tx, ty - 2);
+                ctx.lineTo(tx + 4, ty + 16); // Point Down
+                ctx.lineTo(tx + 8, ty - 2);
                 ctx.fill();
             }
         }
@@ -310,7 +333,7 @@ function drawProceduralFish(ctx, x, y, width, height, color, angle, time, config
         ctx.fill();
 
         // Textures
-        // drawTexture(ctx, config.texture, width, height, color);
+        drawTexture(ctx, config.texture, width, height, color);
 
         // Mouth (Animated)
         // REMOVED dark inside to prevent artifacts
@@ -321,7 +344,7 @@ function drawProceduralFish(ctx, x, y, width, height, color, angle, time, config
 
         // Draw Body (Pacman)
         ctx.fillStyle = color;
-        const mouthAngle = jawOpen * 0.5; // Half-angle
+        const mouthAngle = jawOpen * 0.8; // Wider opening (was 0.5)
 
         ctx.beginPath();
         // Arc from mouth top to mouth bottom (counter-clockwise)
@@ -424,7 +447,7 @@ function drawProceduralFish(ctx, x, y, width, height, color, angle, time, config
         ctx.fill();
 
         // Textures
-        // drawTexture(ctx, config.texture, width, height, color);
+        drawTexture(ctx, config.texture, width, height, color);
 
         // Whiskers
         ctx.strokeStyle = '#2d3436';
@@ -648,6 +671,18 @@ class Fish {
         // Flip context if facing left
         ctx.save();
         ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+
+        // BURP ANIMATION (Shudder + Open Mouth)
+        let drawJawOpen = this.jawOpen;
+        if (this.burpTimer > 0) {
+            // Shudder Effect
+            const shudderAmount = 5;
+            ctx.translate((Math.random() - 0.5) * shudderAmount, (Math.random() - 0.5) * shudderAmount);
+
+            // Force Mouth Open
+            drawJawOpen = 1.0;
+        }
+
         if (!this.facingRight) {
             ctx.scale(-1, 1);
         }
@@ -663,8 +698,55 @@ class Fish {
             ctx.shadowBlur = 0;
         }
 
+        // Catfish Visuals
+        if (this.config.special === 'stealth') {
+            // Charging/Ready Effect (Ring)
+            if (this.boostCharge > 0) {
+                const maxCharge = 3.0;
+                const progress = this.boostCharge / maxCharge;
+
+                ctx.beginPath();
+                ctx.arc(0, 0, this.width * 0.6 + Math.sin(this.time * 10) * 2, 0, Math.PI * 2);
+                // Gold when full, White when charging
+                ctx.strokeStyle = progress >= 0.95 ? `rgba(255, 215, 0, 0.8)` : `rgba(255, 255, 255, 0.5)`;
+                ctx.lineWidth = 2 + progress * 3;
+
+                // Draw partial ring for progress
+                ctx.beginPath();
+                ctx.arc(0, 0, this.width * 0.65, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * progress));
+                ctx.stroke();
+
+                // Text timer
+                ctx.fillStyle = 'white';
+                ctx.font = '12px Arial';
+                if (progress >= 0.99) {
+                    ctx.fillStyle = '#e1b12c';
+                    ctx.fillText("MAX", -12, -this.height * 0.7);
+                } else {
+                    ctx.fillText(this.boostCharge.toFixed(1), -10, -this.height * 0.7);
+                }
+            }
+
+            // Boost Effect (Speed Lines) - Only when moving and using charge
+            const speed = Math.hypot(this.vx, this.vy);
+            if (this.boostCharge > 0 && speed > 10) {
+                // Speed lines / Trail
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = '#e1b12c'; // Gold glow
+
+                ctx.strokeStyle = 'rgba(255, 215, 0, 0.6)';
+                ctx.lineWidth = 3;
+                for (let i = 0; i < 3; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(-this.width * 0.6 - i * 10, -this.height * 0.2 + i * 10);
+                    ctx.lineTo(-this.width * 1.2 - i * 20, -this.height * 0.2 + i * 10);
+                    ctx.stroke();
+                }
+            }
+        }
+
         // Draw fish at 0,0 in local space
-        drawProceduralFish(ctx, 0, 0, this.width, this.height, this.color, angle, this.time, this.config, this.jawOpen);
+        drawProceduralFish(ctx, 0, 0, this.width, this.height, this.color, angle, this.time, this.config, drawJawOpen);
 
         ctx.restore();
     }
@@ -723,8 +805,8 @@ class Fish {
         const futureY = target.y + target.vy * predictionTime;
 
         // Open jaw if close to target!
-        if (dist < 150) {
-            this.jawOpen += 0.1;
+        if (dist < 150) { // Reverted to 150
+            this.jawOpen += 0.2; // Faster opening
         } else {
             this.jawOpen -= 0.1;
         }
@@ -828,8 +910,8 @@ class Player extends Fish {
         console.log('Player Config constructed:', JSON.stringify(playerConfig));
 
         // Adjust speed for player control feel
-        if (archetypeKey === 'shark') playerConfig.baseSpeed = 350;
-        if (archetypeKey === 'angler') playerConfig.baseSpeed = 280;
+        if (archetypeKey === 'shark') playerConfig.baseSpeed = 450; // Buffed from 350
+        if (archetypeKey === 'angler') playerConfig.baseSpeed = 350; // Buffed from 280
 
         // Spawn positions for 2P
         let startX = canvas.width / 2;
@@ -848,6 +930,12 @@ class Player extends Fish {
         };
         this.fishEaten = 0;
         this.abilityCooldown = 0;
+
+        // Catfish Mechanics
+        this.boostCharge = 0; // 0 to 3.0 seconds
+
+        // Shark Mechanics
+        this.burpTimer = 0;
     }
 
     get level() {
@@ -889,7 +977,24 @@ class Player extends Fish {
         if (this.keys.right) dx += 1;
 
         // Speed increases linearly with size to maintain screen-space speed
-        const currentSpeed = this.speed * (this.width / 60);
+        let currentSpeed = this.speed * (this.width / 60);
+
+        // Catfish Stealth & Boost Logic (Bufferable)
+        if (this.config.special === 'stealth') {
+            // Check inputs for "resting"
+            if (dx === 0 && dy === 0) {
+                // Charge up
+                this.boostCharge += deltaTime;
+                if (this.boostCharge > 3.0) this.boostCharge = 3.0; // Cap at 3s
+            } else {
+                // Moving! Discharge if we have charge
+                if (this.boostCharge > 0) {
+                    currentSpeed *= 1.75; // 75% extra speed
+                    this.boostCharge -= deltaTime;
+                    if (this.boostCharge < 0) this.boostCharge = 0;
+                }
+            }
+        }
 
         if (dx !== 0 || dy !== 0) {
             const length = Math.sqrt(dx * dx + dy * dy);
@@ -925,8 +1030,8 @@ class Player extends Fish {
             }
         }
 
-        if (nearestEdible < 150) {
-            this.jawOpen += 0.1;
+        if (nearestEdible < 150) { // Reverted to 150
+            this.jawOpen += 0.2; // Faster opening
         } else {
             this.jawOpen -= 0.1;
         }
@@ -937,6 +1042,35 @@ class Player extends Fish {
 
         this.x = Math.max(0, Math.min(worldWidth - this.width, this.x));
         this.y = Math.max(0, Math.min(worldHeight - this.height, this.y));
+
+        // SHARK BURP LOGIC (Player)
+        if (this.burpTimer > 0) {
+            this.burpTimer -= deltaTime;
+            if (this.burpTimer <= 0) {
+                // BURP!
+                try { soundManager.playBurp(); } catch (e) { }
+
+                // Fire Torpedo
+                // Visuals (Bubbles)
+                for (let i = 0; i < 8; i++) {
+                    particles.push(new Particle(
+                        this.x + this.width / 2 + (this.facingRight ? this.width / 2 : -this.width / 2),
+                        this.y + this.height / 2,
+                        '#00ffff', // Cyan
+                        Math.random() * 2 + 1, // Speed
+                        Math.random() * 3 + 2  // Size
+                    ));
+                }
+                const vx = this.facingRight ? 400 : -400; // Fire in direction of movement
+                projectiles.push(new Torpedo(
+                    this.x + this.width / 2 + (this.facingRight ? this.width / 2 : -this.width / 2),
+                    this.y + this.height / 2,
+                    vx,
+                    0, // Straight ahead
+                    this
+                ));
+            }
+        }
     }
 }
 
@@ -1022,11 +1156,19 @@ class Enemy extends Fish {
 
         // Decision Making
         if (closestPredator) {
+            this.maxSpeed = this.speed * 1.5; // Reset speed
             this.flee(closestPredator.x + closestPredator.width / 2, closestPredator.y + closestPredator.height / 2);
         } else if (closestPrey) {
+            // Hunting Frenzy for Sharks
+            if (this.config.bodyShape === 'shark') {
+                this.maxSpeed = this.speed * 2.0; // 33% faster than normal max
+            } else {
+                this.maxSpeed = this.speed * 1.5;
+            }
             // Use Pursuit for hunting
             this.pursue(closestPrey);
         } else {
+            this.maxSpeed = this.speed * 1.5; // Reset speed
             // Normal Wander
             if (this.config.special !== 'sink' && this.config.special !== 'torpedo') {
                 this.wander(deltaTime);
@@ -1073,6 +1215,35 @@ class Enemy extends Fish {
                         this // Owner
                     ));
                     soundManager.playShoot();
+                }
+            }
+
+            // SHARK BURP LOGIC (Enemy)
+            if (this.burpTimer > 0) {
+                this.burpTimer -= deltaTime;
+                if (this.burpTimer <= 0) {
+                    // BURP!
+                    try { soundManager.playBurp(); } catch (e) { }
+
+                    // Fire Torpedo
+                    // Visuals (Bubbles)
+                    for (let i = 0; i < 8; i++) {
+                        particles.push(new Particle(
+                            this.x + this.width / 2 + (this.facingRight ? this.width / 2 : -this.width / 2),
+                            this.y + this.height / 2,
+                            '#00ffff', // Cyan
+                            Math.random() * 2 + 1, // Speed
+                            Math.random() * 3 + 2  // Size
+                        ));
+                    }
+                    const vx = this.vx > 0 ? 400 : -400; // Fire in direction of movement
+                    projectiles.push(new Torpedo(
+                        this.x + this.width / 2 + (this.vx > 0 ? this.width / 2 : -this.width / 2),
+                        this.y + this.height / 2,
+                        vx,
+                        0, // Straight ahead
+                        this
+                    ));
                 }
             }
         }
@@ -1332,6 +1503,9 @@ class Torpedo {
         let target = null;
         let minDist = Infinity;
         for (const p of players) {
+            // STEALTH CHECK: Ignore invisible targets
+            if (p.alpha < 0.9) continue;
+
             const d = Math.hypot(p.x - this.x, p.y - this.y);
             if (d < minDist) {
                 minDist = d;
@@ -1529,21 +1703,23 @@ function spawnEnemy(worldWidth, worldHeight) {
         else archetypeKey = 'piranha'; // Rare early threat
     } else if (difficulty < 0.4) {
         // Mid game: Balanced
-        if (roll < 0.3) archetypeKey = 'guppy';
-        else if (roll < 0.6) archetypeKey = 'blob';
-        else if (roll < 0.85) archetypeKey = 'piranha';
-        else archetypeKey = 'eel';
+        if (roll < 0.25) archetypeKey = 'guppy';
+        else if (roll < 0.5) archetypeKey = 'blob';
+        else if (roll < 0.75) archetypeKey = 'piranha';
+        else if (roll < 0.9) archetypeKey = 'eel';
+        else archetypeKey = 'shark'; // Added 10% chance in mid-game
     } else {
         // Late game: Dangerous!
-        if (roll < 0.2) archetypeKey = 'guppy'; // Food still needed
-        else if (roll < 0.4) archetypeKey = 'blob';
-        else if (roll < 0.6) archetypeKey = 'piranha';
-        else if (roll < 0.8) archetypeKey = 'eel';
-        else archetypeKey = 'shark';
+        if (roll < 0.15) archetypeKey = 'guppy'; // Reduced food
+        else if (roll < 0.3) archetypeKey = 'blob';
+        else if (roll < 0.5) archetypeKey = 'piranha';
+        else if (roll < 0.7) archetypeKey = 'eel';
+        else archetypeKey = 'shark'; // 30% chance (was 20%)
     }
 
     // Ensure there's always a chance for a "Apex" spawn if player is huge
-    if (sizeFactor > 0.5 && Math.random() < 0.1) {
+    // INCREASED chance for testing
+    if (sizeFactor > 0.3 && Math.random() < 0.2) { // Earlier and more often
         archetypeKey = 'shark';
     }
 
@@ -1722,24 +1898,7 @@ function updateGame(deltaTime, worldWidth, worldHeight) {
 
     players.forEach(p => p.update(deltaTime, worldWidth, worldHeight));
 
-    // DEBUG: Force Submarine Spawn at 5 seconds
-    if (!window.debugSubSpawned && gameTime > 5) {
-        window.debugSubSpawned = true;
-        const subConfig = ARCHETYPES.submarine;
-        // Spawn at a safe distance from player 1
-        const p1 = players[0];
-        let spawnX = p1.x + 600;
-        if (spawnX > worldWidth - 100) spawnX = p1.x - 600;
 
-        enemies.push(new Enemy(
-            spawnX,
-            Math.random() * (worldHeight - 200) + 100,
-            subConfig.scaleRange[0] * 40, // Base size approx
-            subConfig.scaleRange[0] * 20,
-            subConfig
-        ));
-        console.log("DEBUG: Submarine spawned!");
-    }
 
     // Update Enemies & Collision
     for (let i = enemies.length - 1; i >= 0; i--) {
@@ -1760,13 +1919,26 @@ function updateGame(deltaTime, worldWidth, worldHeight) {
                 if (p.width >= enemy.width) {
                     score += 10;
                     document.getElementById('score').textContent = score;
-                    p.grow(enemy.width); // Pass prey size
-                    createEatingEffect(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.color); // Yellow/Blood
-                    try {
-                        soundManager.playEat();
-                    } catch (e) {
-                        console.error('Error playing eat sound:', e);
+
+                    // Shark Burp Trigger
+                    if (p.config.bodyShape === 'shark' && enemy.config.bodyShape === 'submarine') {
+                        // Always burp on submarine
+                        p.burpTimer = 1.0;
                     }
+
+                    p.grow(enemy.width); // Pass prey size
+
+                    if (enemy.config.bodyShape === 'submarine') {
+                        // Submarine Eating: Clonk + No Blood
+                        try { soundManager.playClonk(); } catch (e) { }
+                        // No eating effect (or maybe sparks? For now, nothing as requested "no blood effect")
+                        createEatingEffect(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#cccccc'); // Grey sparks/debris
+                    } else {
+                        // Normal Eating
+                        createEatingEffect(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.color); // Blood/Guts
+                        try { soundManager.playEat(); } catch (e) { }
+                    }
+
                     enemies.splice(i, 1);
                     break; // Enemy eaten
                 } else {
@@ -1799,7 +1971,19 @@ function updateGame(deltaTime, worldWidth, worldHeight) {
                     if (enemy.width > other.width * 1.1) {
                         // Enemy eats Other
                         enemy.grow(other.width); // Pass prey size
-                        createEatingEffect(other.x + other.width / 2, other.y + other.height / 2, other.color); // Red/Blood
+
+                        if (enemy.config.bodyShape === 'shark' && other.config.bodyShape === 'submarine') {
+                            // Enemy Shark Burp
+                            // Always burp on submarine
+                            enemy.burpTimer = 1.0;
+
+                            // Clonk + No Blood
+                            try { soundManager.playClonk(); } catch (e) { }
+                            createEatingEffect(other.x + other.width / 2, other.y + other.height / 2, '#cccccc');
+                        } else {
+                            createEatingEffect(other.x + other.width / 2, other.y + other.height / 2, other.color); // Red/Blood
+                        }
+
                         enemies.splice(j, 1);
                         if (j < i) i--; // Adjust index if we removed an element before current
                     }
@@ -1832,7 +2016,7 @@ function checkCollision(rect1, rect2) {
 
 // Helper for random archetype
 function getRandomArchetype() {
-    const playableKeys = Object.keys(ARCHETYPES).filter(k => k !== 'diver' && k !== 'submarine');
+    const playableKeys = ['shark', 'angler', 'catfish'];
     return playableKeys[Math.floor(Math.random() * playableKeys.length)];
 }
 
@@ -1933,7 +2117,7 @@ function gameOver(winnerId = null) {
         document.getElementById('game-over-screen').classList.add('active');
 
         // Reset selection UI for next game
-        document.getElementById('start-screen').classList.remove('hidden');
+        // document.getElementById('start-screen').classList.remove('hidden'); // REMOVED: This was covering the Game Over screen
     }, 2000);
 }
 
@@ -1997,15 +2181,15 @@ function initPatterns() {
     });
 
     assets.patterns.stripes = createPattern((ctx, w, h) => {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-        const stripeWidth = 10;
-        const gap = 30;
-        for (let x = -10; x < w + 10; x += gap) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; // Darker stripes
+        const stripeWidth = 15; // Wider stripes
+        const gap = 40;
+        for (let x = -20; x < w + 20; x += gap) {
             ctx.beginPath();
             ctx.moveTo(x, 0);
             ctx.lineTo(x + stripeWidth, 0);
-            ctx.lineTo(x + stripeWidth * 0.5, h);
-            ctx.lineTo(x - stripeWidth * 0.5, h);
+            ctx.lineTo(x + stripeWidth * 0.5 + 20, h); // Slanted
+            ctx.lineTo(x - stripeWidth * 0.5 + 20, h);
             ctx.fill();
         }
     });
@@ -2036,13 +2220,14 @@ function initPatterns() {
     });
 
     assets.patterns.mottled = createPattern((ctx, w, h) => {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-        for (let i = 0; i < 20; i++) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)'; // Darker spots
+        for (let i = 0; i < 30; i++) {
             const x = Math.random() * w;
             const y = Math.random() * h;
-            const r = 10 + Math.random() * 10;
+            const r = 5 + Math.random() * 15; // Varied sizes
             ctx.beginPath();
-            ctx.arc(x, y, r, 0, Math.PI * 2);
+            // Irregular blobs
+            ctx.ellipse(x, y, r, r * 0.7, Math.random() * Math.PI, 0, Math.PI * 2);
             ctx.fill();
         }
     });
