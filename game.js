@@ -4,6 +4,7 @@ const ctx = canvas.getContext('2d');
 // Game State
 let gameState = 'START'; // START, PLAYING, GAMEOVER
 let score = 0;
+let highScore = localStorage.getItem('fishyBusinessHighScore') || 0;
 let animationId;
 let lastTime = 0;
 
