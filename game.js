@@ -19,8 +19,8 @@ assets.background.src = 'assets/background.png';
 const ARCHETYPES = {
     guppy: {
         name: 'Guppy',
-        bodyShape: 'round',
-        finStyle: 'round',
+        bodyShape: 'guppy', // Custom shape for Fancy Guppy
+        finStyle: 'veil',
         hasTeeth: false,
         color: '#ff7675', // Pinkish Red
         baseSpeed: 250, // Buffed from 200
@@ -32,7 +32,7 @@ const ARCHETYPES = {
     },
     blob: {
         name: 'Blob',
-        bodyShape: 'round',
+        bodyShape: 'blob', // NEW: Custom wobble shape
         finStyle: 'round',
         hasTeeth: false,
         color: '#a29bfe', // Purple
@@ -45,12 +45,12 @@ const ARCHETYPES = {
     },
     piranha: {
         name: 'Piranha',
-        bodyShape: 'round',
+        bodyShape: 'piranha', // Custom shape
         finStyle: 'spiky',
         hasTeeth: true,
         color: '#fab1a0', // Orange
         baseSpeed: 300, // Buffed from 220
-        visionRadius: 250,
+        visionRadius: 400, // Increased from 250 for better aggression
         fleeForce: 1,
         aggression: 1.0, // Buffed from 0.8
         scaleRange: [0.4, 0.7],
@@ -182,19 +182,14 @@ function drawProceduralFish(ctx, x, y, width, height, color, angle, time, config
 
     // 1. Draw Tail (Common for most, specific for Eel)
     // SKIP for Diver and Submarine
-    if (config.bodyShape !== 'diver' && config.bodyShape !== 'submarine') {
+    // 1. Draw Tail (Common for most, specific for Eel)
+    // SKIP for Diver, Submarine, and Eel (Eel has custom body)
+    if (config.bodyShape !== 'diver' && config.bodyShape !== 'submarine' && config.bodyShape !== 'eel') {
         ctx.fillStyle = color;
         ctx.beginPath();
-        if (config.bodyShape === 'eel') {
-            ctx.moveTo(-width * 0.4, 0);
-            ctx.quadraticCurveTo(-width * 0.9, tailWag * 30, -width * 1.2, tailWag * 10);
-            ctx.lineTo(-width * 1.2, tailWag * 10 + height * 0.3);
-            ctx.quadraticCurveTo(-width * 0.9, tailWag * 30 + height * 0.3, -width * 0.4, height * 0.3);
-        } else {
-            ctx.moveTo(-width * 0.3, 0);
-            ctx.lineTo(-width * 0.8, -height * 0.5 + tailWag * 20);
-            ctx.lineTo(-width * 0.8, height * 0.5 + tailWag * 20);
-        }
+        ctx.moveTo(-width * 0.3, 0);
+        ctx.lineTo(-width * 0.8, -height * 0.5 + tailWag * 20);
+        ctx.lineTo(-width * 0.8, height * 0.5 + tailWag * 20);
         ctx.fill();
     }
 
@@ -520,41 +515,147 @@ function drawProceduralFish(ctx, x, y, width, height, color, angle, time, config
         ctx.fill();
 
     } else if (config.bodyShape === 'diver') {
-        // --- DIVER ---
+        // --- DIVER (VISUAL UPGRADE) ---
         // Rotated to face down mostly? No, they sink.
-        // Head
+
+        // Animation Vars
+        const kick = Math.sin(time * 10) * 0.2;
+
+        // 1. Scuba Tank (Behind body)
+        ctx.fillStyle = '#fab1a0'; // Orange tank
+        ctx.beginPath();
+        ctx.roundRect(-width * 0.15, -height * 0.2, width * 0.3, height * 0.5, 5);
+        ctx.fill();
+        ctx.strokeStyle = '#2d3436';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // 2. Body (Wetsuit)
+        ctx.fillStyle = color; // Suit color
+        ctx.beginPath();
+        // Torso
+        ctx.ellipse(0, width * 0.1, width * 0.25, height * 0.35, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 3. Head
         ctx.fillStyle = '#ffeaa7'; // Skin
         ctx.beginPath();
-        ctx.arc(0, -height * 0.3, width * 0.15, 0, Math.PI * 2);
+        ctx.arc(0, -height * 0.3, width * 0.18, 0, Math.PI * 2);
         ctx.fill();
-        // Mask
-        ctx.fillStyle = '#74b9ff';
+
+        // 4. Mask & Regulator
+        ctx.fillStyle = '#74b9ff'; // Glass
         ctx.beginPath();
-        ctx.rect(-width * 0.05, -height * 0.35, width * 0.1, height * 0.1);
+        ctx.roundRect(-width * 0.12, -height * 0.35, width * 0.24, height * 0.12, 3);
         ctx.fill();
-        // Body
-        ctx.fillStyle = color;
+        ctx.strokeStyle = '#2d3436';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Regulator
+        ctx.fillStyle = '#636e72';
         ctx.beginPath();
-        ctx.ellipse(0, width * 0.1, width * 0.2, height * 0.4, 0, 0, Math.PI * 2);
+        ctx.arc(0, -height * 0.22, width * 0.05, 0, Math.PI * 2);
         ctx.fill();
-        // Arms
+        // Hose
+        ctx.beginPath();
+        ctx.moveTo(0, -height * 0.22);
+        ctx.quadraticCurveTo(width * 0.2, -height * 0.25, width * 0.15, -height * 0.2);
+        ctx.strokeStyle = '#2d3436';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // 5. Arms (Swimming motion)
         ctx.strokeStyle = color;
-        ctx.lineWidth = width * 0.1;
+        ctx.lineWidth = width * 0.12;
+        ctx.lineCap = 'round';
+
+        // Left Arm
         ctx.beginPath();
         ctx.moveTo(-width * 0.2, -height * 0.1);
-        ctx.lineTo(-width * 0.4, height * 0.1);
-        ctx.moveTo(width * 0.2, -height * 0.1);
-        ctx.lineTo(width * 0.4, height * 0.1);
+        ctx.quadraticCurveTo(-width * 0.4, 0, -width * 0.3, height * 0.2);
         ctx.stroke();
-        // Flippers
-        ctx.fillStyle = '#000';
+
+        // Right Arm
         ctx.beginPath();
-        ctx.moveTo(-width * 0.1, height * 0.4);
-        ctx.lineTo(-width * 0.3, height * 0.8);
-        ctx.lineTo(0, height * 0.7);
-        ctx.lineTo(width * 0.3, height * 0.8);
-        ctx.lineTo(width * 0.1, height * 0.4);
+        ctx.moveTo(width * 0.2, -height * 0.1);
+        ctx.quadraticCurveTo(width * 0.4, 0, width * 0.3, height * 0.2);
+        ctx.stroke();
+
+        // 6. Legs & Flippers (Kicking Animation)
+        ctx.fillStyle = '#2d3436'; // Dark flippers
+
+        // Thighs (Connect to body)
+        ctx.fillStyle = color;
+
+        // Left Leg
+        ctx.save();
+        ctx.translate(-width * 0.1, height * 0.35);
+        ctx.rotate(kick * 0.5); // Thigh moves less
+
+        // Thigh
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-width * 0.05, height * 0.2);
+        ctx.lineTo(width * 0.05, height * 0.2);
         ctx.fill();
+
+        // Calf + Flipper (Attached to thigh)
+        ctx.translate(0, height * 0.2);
+        ctx.rotate(kick); // Calf kicks more
+
+        // Calf
+        ctx.beginPath();
+        ctx.moveTo(-width * 0.05, 0);
+        ctx.lineTo(-width * 0.02, height * 0.15);
+        ctx.lineTo(width * 0.02, height * 0.15);
+        ctx.lineTo(width * 0.05, 0);
+        ctx.fill();
+
+        // Flipper
+        ctx.fillStyle = '#2d3436';
+        ctx.beginPath();
+        ctx.moveTo(-width * 0.02, height * 0.1);
+        ctx.quadraticCurveTo(-width * 0.2, height * 0.4, -width * 0.1, height * 0.6); // Blade
+        ctx.lineTo(width * 0.1, height * 0.6);
+        ctx.quadraticCurveTo(width * 0.2, height * 0.4, width * 0.02, height * 0.1);
+        ctx.fill();
+        ctx.restore();
+
+        // Right Leg
+        ctx.fillStyle = color; // Reset to suit color
+        ctx.save();
+        ctx.translate(width * 0.1, height * 0.35);
+        ctx.rotate(-kick * 0.5);
+
+        // Thigh
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-width * 0.05, height * 0.2);
+        ctx.lineTo(width * 0.05, height * 0.2);
+        ctx.fill();
+
+        // Calf + Flipper
+        ctx.translate(0, height * 0.2);
+        ctx.rotate(-kick);
+
+        // Calf
+        ctx.beginPath();
+        ctx.moveTo(-width * 0.05, 0);
+        ctx.lineTo(-width * 0.02, height * 0.15);
+        ctx.lineTo(width * 0.02, height * 0.15);
+        ctx.lineTo(width * 0.05, 0);
+        ctx.fill();
+
+        // Flipper
+        ctx.fillStyle = '#2d3436';
+        ctx.beginPath();
+        ctx.moveTo(-width * 0.02, height * 0.1);
+        ctx.quadraticCurveTo(-width * 0.2, height * 0.4, -width * 0.1, height * 0.6);
+        ctx.lineTo(width * 0.1, height * 0.6);
+        ctx.quadraticCurveTo(width * 0.2, height * 0.4, width * 0.02, height * 0.1);
+        ctx.fill();
+        ctx.restore();
 
     } else if (config.bodyShape === 'angler') {
         // --- ANGLERFISH (NIGHTMARE OVERHAUL - EXAGGERATED) ---
@@ -611,7 +712,7 @@ function drawProceduralFish(ctx, x, y, width, height, color, angle, time, config
         // Hinge is now "inside", so we curve towards the throat/hinge area
         // Let's define the Hinge slightly inside/above the throat
         const hingeX = -width * 0.05; // Moved left to match throat
-        const hingeY = height * 0.15;
+        const hingeY = height * 0.25; // LOWERED significantly (was 0.15)
 
         ctx.quadraticCurveTo(roofCpX, roofCpY, hingeX, hingeY);
         ctx.stroke();
@@ -649,7 +750,8 @@ function drawProceduralFish(ctx, x, y, width, height, color, angle, time, config
         ctx.fill();
 
         // 4. Jaw & Teeth (Chaotic Needles)
-        const jawAngle = 0.3 + jawOpen * 0.6;
+        // MORE FEARSOME: Wider angle
+        const jawAngle = 0.4 + jawOpen * 0.8;
 
         // Lower Jaw (Huge, heavy bone)
         ctx.save();
@@ -677,7 +779,8 @@ function drawProceduralFish(ctx, x, y, width, height, color, angle, time, config
             const r1 = seededRandom(id + i * 20);
             const r2 = seededRandom(id + i * 20 + 1);
 
-            const len = height * 0.35 + r1 * height * 0.25;
+            // LONGER TEETH for fearsome look
+            const len = height * 0.45 + r1 * height * 0.3;
             const angleVar = (r2 - 0.5) * 0.8; // More tilt
 
             ctx.beginPath();
@@ -722,38 +825,366 @@ function drawProceduralFish(ctx, x, y, width, height, color, angle, time, config
         ctx.fill();
 
     } else if (config.bodyShape === 'submarine') {
-        // --- SUBMARINE ---
-        // Main Hull
+        // --- SUBMARINE (VISUAL UPGRADE) ---
+        // Metallic Hull
+        const grad = ctx.createLinearGradient(0, -height * 0.5, 0, height * 0.5);
+        grad.addColorStop(0, '#636e72');
+        grad.addColorStop(0.5, '#b2bec3'); // Highlight
+        grad.addColorStop(1, '#2d3436');
+        ctx.fillStyle = grad;
+
+        // Main Body
         ctx.beginPath();
         ctx.ellipse(0, 0, width * 0.6, height * 0.25, 0, 0, Math.PI * 2);
         ctx.fill();
+        // Removed outline
+
+        // Rivets (Detail)
+        ctx.fillStyle = '#2d3436';
+        for (let i = 0; i < 5; i++) {
+            ctx.beginPath();
+            ctx.arc(-width * 0.4 + i * width * 0.2, 0, 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
         // Conning Tower
         ctx.fillStyle = '#636e72';
         ctx.beginPath();
-        ctx.rect(-width * 0.2, -height * 0.4, width * 0.2, height * 0.2);
+        ctx.roundRect(-width * 0.2, -height * 0.45, width * 0.2, height * 0.25, 5);
         ctx.fill();
+        // Removed outline
+
         // Periscope
         ctx.fillStyle = '#2d3436';
         ctx.beginPath();
-        ctx.rect(-width * 0.15, -height * 0.6, width * 0.05, height * 0.2);
-        ctx.rect(-width * 0.2, -height * 0.6, width * 0.1, width * 0.05);
+        ctx.rect(-width * 0.15, -height * 0.65, width * 0.04, height * 0.2); // Stalk
+        ctx.rect(-width * 0.15, -height * 0.65, width * 0.1, width * 0.04); // Scope
         ctx.fill();
-        // Propeller
-        ctx.fillStyle = '#b2bec3';
+
+        // Windows (Portholes)
+        ctx.fillStyle = '#74b9ff'; // Glass
         ctx.beginPath();
-        ctx.rect(-width * 0.65, -height * 0.1, width * 0.1, height * 0.2);
+        ctx.arc(-width * 0.1, 0, width * 0.05, 0, Math.PI * 2);
+        ctx.fill();
+        // Removed outline
+
+        ctx.beginPath();
+        ctx.arc(width * 0.1, 0, width * 0.05, 0, Math.PI * 2);
+        ctx.fill();
+        // Removed outline
+
+        // Propeller (Animated)
+        const propAngle = time * 15;
+        ctx.save();
+        ctx.translate(-width * 0.62, 0);
+        ctx.rotate(propAngle);
+        ctx.fillStyle = '#fab1a0'; // Bronze/Orange
+        ctx.beginPath();
+        ctx.rect(-5, -height * 0.2, 10, height * 0.4);
+        ctx.fill();
+        ctx.restore();
+
+        // Propeller Shaft
+        ctx.fillStyle = '#2d3436';
+        ctx.beginPath();
+        ctx.rect(-width * 0.65, -height * 0.05, width * 0.05, height * 0.1);
+        ctx.fill();
+
+        // Wake Bubbles (Engine)
+        if (Math.random() < 0.2) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            const wakeX = -width * 0.7 - Math.random() * 10;
+            const wakeY = (Math.random() - 0.5) * height * 0.3;
+            ctx.beginPath();
+            ctx.arc(wakeX, wakeY, Math.random() * 4 + 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+    } else if (config.bodyShape === 'eel') {
+        // --- EEL (SINUOUS MOTION) ---
+        // Multi-segment spine for slithering effect
+        const segments = 12;
+        const segmentLen = width * 0.15;
+
+        ctx.fillStyle = color;
+
+        // Draw segments from head to tail
+        for (let i = 0; i < segments; i++) {
+            const t = i / segments; // 0 (head) to 1 (tail)
+
+            // Calculate wavy offset
+            // Wave travels backwards, so offset phase by i
+            const wave = Math.sin(time * 8 - i * 0.8) * (height * 0.3);
+
+            const sx = width * 0.4 - i * segmentLen; // Move back
+            const sy = wave;
+
+            // Taper width: thickest at head (0.2), thin at tail
+            const sWidth = (1 - t) * width * 0.25 + width * 0.05;
+
+            ctx.beginPath();
+            ctx.arc(sx, sy, sWidth, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Dorsal Fin (Continuous ribbon)
+            if (i < segments - 1) {
+                const nextWave = Math.sin(time * 8 - (i + 1) * 0.8) * (height * 0.3);
+                const nextSx = width * 0.4 - (i + 1) * segmentLen;
+                const nextSy = nextWave;
+
+                ctx.fillStyle = 'rgba(46, 213, 115, 0.6)'; // Semi-transparent green
+                ctx.beginPath();
+                ctx.moveTo(sx, sy - sWidth * 0.5);
+                ctx.lineTo(nextSx, nextSy - sWidth * 0.5); // Top edge
+                ctx.lineTo(nextSx, nextSy - sWidth * 1.5); // Fin height
+                ctx.lineTo(sx, sy - sWidth * 1.5);
+                ctx.fill();
+                ctx.fillStyle = color; // Reset
+            }
+        }
+
+        // Head details
+        const headWave = Math.sin(time * 8) * (height * 0.3);
+        const headX = width * 0.4;
+        const headY = headWave;
+
+        // Jaw
+        const jawAngle = 0.2 + jawOpen * 0.5;
+        ctx.save();
+        ctx.translate(headX, headY);
+        ctx.rotate(Math.cos(time * 8) * 0.1); // Slight head bob matching wave slope? 
+        // Actually, let's keep it simple.
+
+        // Lower Jaw
+        ctx.save();
+        ctx.rotate(jawAngle);
+        ctx.fillStyle = '#2ed573'; // Lighter green
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(width * 0.15, height * 0.1);
+        ctx.lineTo(width * 0.1, height * 0.2); // Chin
+        ctx.lineTo(0, height * 0.1);
+        ctx.fill();
+
+        // Teeth
+        if (config.hasTeeth) {
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.moveTo(width * 0.05, 0);
+            ctx.lineTo(width * 0.08, -height * 0.05);
+            ctx.lineTo(width * 0.11, 0);
+            ctx.fill();
+        }
+        ctx.restore();
+
+        ctx.restore();
+
+    } else if (config.bodyShape === 'piranha') {
+        // --- PIRANHA (BULLDOG) ---
+        // Compact, muscular body
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        // Top curve (slightly flattened)
+        ctx.moveTo(width * 0.4, -height * 0.3);
+        ctx.quadraticCurveTo(0, -height * 0.6, -width * 0.5, -height * 0.1);
+        // Tail base
+        ctx.lineTo(-width * 0.5, height * 0.1);
+        // Bottom curve (deep belly)
+        ctx.quadraticCurveTo(0, height * 0.6, width * 0.3, height * 0.3);
+        ctx.fill();
+
+        // Textures
+        drawTexture(ctx, config.texture, width, height, 'rgba(0,0,0,0.1)');
+
+        // Jaw (Bulldog Underbite)
+        // BIGGER MOUTH: Wider angle (0.3 base)
+        const jawAngle = 0.3 + jawOpen * 0.6;
+
+        // Lower Jaw (Protruding & Longer)
+        ctx.save();
+        ctx.translate(width * 0.1, height * 0.15); // Hinge moved down slightly
+        ctx.rotate(jawAngle);
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        // Extended jaw length (0.5 instead of 0.4)
+        ctx.quadraticCurveTo(width * 0.25, height * 0.3, width * 0.5, -height * 0.15); // Chin sticks out more
+        ctx.lineTo(width * 0.4, -height * 0.25); // Lip
+        ctx.lineTo(0, 0);
+        ctx.fill();
+
+        // Lower Teeth (Sharp, visible, spaced out)
+        if (config.hasTeeth) {
+            ctx.fillStyle = 'white';
+            // Reduced count, increased spacing
+            for (let i = 0; i < 3; i++) {
+                const tx = width * 0.15 + i * width * 0.12; // Wider spacing (was 0.08)
+                ctx.beginPath();
+                ctx.moveTo(tx, 0);
+                ctx.lineTo(tx + 4, -height * 0.18); // Bigger teeth
+                ctx.lineTo(tx + 8, 0);
+                ctx.fill();
+            }
+        }
+        ctx.restore();
+
+        // Upper Jaw (Short but wider)
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(width * 0.4, -height * 0.3);
+        ctx.quadraticCurveTo(width * 0.5, -height * 0.1, width * 0.3, 0);
+        ctx.fill();
+
+        // Upper Teeth
+        if (config.hasTeeth) {
+            ctx.fillStyle = 'white';
+            for (let i = 0; i < 3; i++) {
+                const tx = width * 0.25 + i * width * 0.12; // Wider spacing
+                const ty = -height * 0.08; // Moved UP (was -0.05)
+                ctx.beginPath();
+                ctx.moveTo(tx, ty);
+                ctx.lineTo(tx + 4, ty + height * 0.18); // Bigger teeth
+                ctx.lineTo(tx + 8, ty);
+                ctx.fill();
+            }
+        }
+
+        // Angry Eye
+        ctx.fillStyle = 'white';
+        ctx.beginPath();
+        ctx.arc(width * 0.1, -height * 0.15, width * 0.12, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Pupil
+        ctx.fillStyle = 'black';
+        ctx.beginPath();
+        ctx.arc(width * 0.12, -height * 0.15, width * 0.04, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Brow (Angry)
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(width * 0.0, -height * 0.25);
+        ctx.lineTo(width * 0.25, -height * 0.1);
+        ctx.lineTo(width * 0.25, -height * 0.3);
+        ctx.fill();
+
+    } else if (config.bodyShape === 'guppy') {
+        // --- FANCY GUPPY ---
+        // Gradient Body
+        const grad = ctx.createLinearGradient(width * 0.5, 0, -width * 0.5, 0);
+        grad.addColorStop(0, color);
+        grad.addColorStop(1, '#dfe6e9'); // Fade to whitish tail
+        ctx.fillStyle = grad;
+
+        ctx.beginPath();
+        // Teardrop shape
+        ctx.moveTo(width * 0.5, 0);
+        ctx.quadraticCurveTo(width * 0.2, -height * 0.5, -width * 0.2, -height * 0.3);
+        ctx.lineTo(-width * 0.4, 0);
+        ctx.lineTo(-width * 0.2, height * 0.3);
+        ctx.quadraticCurveTo(width * 0.2, height * 0.5, width * 0.5, 0);
+        ctx.fill();
+
+        // Fan Tail (Large & Flowing)
+        ctx.fillStyle = color; // Solid color for tail or maybe gradient too?
+        ctx.beginPath();
+        ctx.moveTo(-width * 0.3, 0);
+
+        // Fan shape
+        const tailSize = width * 0.8;
+        const tailAngle = Math.PI / 3; // 60 degrees
+        const tailWave = Math.sin(time * 8) * 0.2; // Waving rotation
+
+        ctx.save();
+        ctx.translate(-width * 0.3, 0);
+        ctx.rotate(tailWave);
+
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        // Top edge
+        ctx.lineTo(-tailSize, -tailSize * 0.6);
+        // Scalloped edge
+        ctx.quadraticCurveTo(-tailSize * 1.2, 0, -tailSize, tailSize * 0.6);
+        // Bottom edge
+        ctx.lineTo(0, 0);
+        ctx.fill();
+
+        // Detail lines on tail
+        ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+        ctx.lineWidth = 1;
+        for (let i = 1; i < 5; i++) {
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            const t = i / 5;
+            const y = -tailSize * 0.6 + t * (tailSize * 1.2);
+            ctx.lineTo(-tailSize, y);
+            ctx.stroke();
+        }
+        ctx.restore();
+
+        // Eye (Cute & Big)
+        ctx.fillStyle = 'white';
+        ctx.beginPath();
+        ctx.arc(width * 0.25, -height * 0.1, width * 0.12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'black';
+        ctx.beginPath();
+        ctx.arc(width * 0.3, -height * 0.1, width * 0.05, 0, Math.PI * 2);
+        ctx.fill();
+
+    } else if (config.bodyShape === 'blob') {
+        // --- BLOB (SQUISHY WOBBLE) ---
+        ctx.fillStyle = color;
+        ctx.beginPath();
+
+        // Draw a wobbly circle
+        const segments = 16;
+        for (let i = 0; i <= segments; i++) {
+            const theta = (i / segments) * Math.PI * 2;
+            // Wobble effect: radius changes with time and angle
+            const wobble = Math.sin(theta * 3 + time * 5) * (width * 0.05) +
+                Math.cos(theta * 5 - time * 3) * (width * 0.03);
+
+            const r = (width * 0.4) + wobble;
+            const bx = Math.cos(theta) * r;
+            const by = Math.sin(theta) * (r * 0.8); // Slightly flattened
+
+            if (i === 0) ctx.moveTo(bx, by);
+            else ctx.lineTo(bx, by);
+        }
+        ctx.fill();
+
+        // Textures
+        drawTexture(ctx, config.texture, width, height, 'rgba(0,0,0,0.1)');
+
+        // Cute wide eyes
+        const eyeOffset = width * 0.15;
+        ctx.fillStyle = 'white';
+        ctx.beginPath();
+        ctx.arc(width * 0.2, -height * 0.15, width * 0.12, 0, Math.PI * 2); // Right
+        ctx.arc(width * 0.2, height * 0.15, width * 0.12, 0, Math.PI * 2);  // Left (visible due to rotation?)
+        // Actually, let's just do one big eye or two side-by-side
+        // Side view: One big eye
+        ctx.fill();
+
+        ctx.fillStyle = 'black';
+        ctx.beginPath();
+        ctx.arc(width * 0.25, -height * 0.15, width * 0.05, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Small mouth
+        ctx.fillStyle = 'black';
+        ctx.beginPath();
+        ctx.arc(width * 0.35, 0, width * 0.05, 0, Math.PI * 2);
         ctx.fill();
 
     } else {
-        // --- GENERIC (OVAL/EEL) ---
+        // --- GENERIC (OVAL) ---
         // Simple ellipse body
         ctx.fillStyle = color;
         ctx.beginPath();
-        if (config.bodyShape === 'eel') {
-            ctx.ellipse(0, 0, width * 0.6, height * 0.25, 0, 0, Math.PI * 2);
-        } else {
-            ctx.ellipse(0, 0, width * 0.5, height * 0.4, 0, 0, Math.PI * 2);
-        }
+        ctx.ellipse(0, 0, width * 0.5, height * 0.4, 0, 0, Math.PI * 2);
         ctx.fill();
 
         // Simple Mouth (Black Circle scaled)
@@ -768,23 +1199,40 @@ function drawProceduralFish(ctx, x, y, width, height, color, angle, time, config
 
     // 3. Fins (Generic, skip for Shark as it has custom)
     // SKIP for Diver and Submarine
-    if (config.bodyShape !== 'shark' && config.bodyShape !== 'diver' && config.bodyShape !== 'submarine') {
+    // 3. Fins (Generic, skip for Shark as it has custom)
+    // SKIP for Diver, Submarine, and Eel
+    // 3. Fins (Generic, skip for Shark as it has custom)
+    // SKIP for Diver, Submarine, Eel, and Guppy (Custom)
+    if (config.bodyShape !== 'shark' && config.bodyShape !== 'diver' && config.bodyShape !== 'submarine' && config.bodyShape !== 'eel' && config.bodyShape !== 'guppy') {
         ctx.fillStyle = color;
+
+        // Top Fin
         ctx.beginPath();
         ctx.moveTo(0, -height * 0.3);
         if (config.finStyle === 'spiky') {
             ctx.lineTo(width * 0.1, -height * 0.7);
             ctx.lineTo(width * 0.2, -height * 0.3);
+        } else if (config.finStyle === 'veil') {
+            // Flowing Veil Fin
+            const wave = Math.sin(time * 5) * (width * 0.1);
+            ctx.lineTo(-width * 0.4, -height * 0.8 + wave); // Long flowing back
+            ctx.lineTo(width * 0.1, -height * 0.3);
         } else {
             ctx.quadraticCurveTo(-width * 0.2, -height * 0.6, width * 0.1, -height * 0.3);
         }
         ctx.fill();
 
+        // Bottom Fin
         ctx.beginPath();
         ctx.moveTo(0, height * 0.3);
         if (config.finStyle === 'spiky') {
             ctx.lineTo(width * 0.1, height * 0.7);
             ctx.lineTo(width * 0.2, height * 0.3);
+        } else if (config.finStyle === 'veil') {
+            // Flowing Veil Fin
+            const wave = Math.sin(time * 5 + Math.PI) * (width * 0.1);
+            ctx.lineTo(-width * 0.4, height * 0.8 + wave); // Long flowing back
+            ctx.lineTo(width * 0.1, height * 0.3);
         } else {
             ctx.quadraticCurveTo(-width * 0.2, height * 0.6, width * 0.1, height * 0.3);
         }
@@ -1354,8 +1802,13 @@ class Enemy extends Fish {
         }
 
         // Check other Enemies
+        // Check other Enemies
         for (const other of enemies) {
             if (other === this) continue;
+
+            // PIRANHA EXCEPTION: Don't eat other Piranhas!
+            if (this.config.bodyShape === 'piranha' && other.config.bodyShape === 'piranha') continue;
+
             const d = Math.hypot(other.x - this.x, other.y - this.y);
             if (d < this.visionRadius) {
                 if (other.width > this.width * 1.1) {
@@ -1383,6 +1836,9 @@ class Enemy extends Fish {
             // Hunting Frenzy for Sharks
             if (this.config.bodyShape === 'shark') {
                 this.maxSpeed = this.speed * 2.0; // 33% faster than normal max
+            } else if (this.config.bodyShape === 'piranha') {
+                // Piranha Burst Logic (Hunting)
+                this.updatePiranhaBurst(deltaTime, true); // true = aggressive burst
             } else {
                 this.maxSpeed = this.speed * 1.5;
             }
@@ -1396,7 +1852,14 @@ class Enemy extends Fish {
                 this.jawOpen -= 0.1;
             }
         } else {
-            this.maxSpeed = this.speed * 1.5; // Reset speed
+            // Normal Wander
+            if (this.config.bodyShape === 'piranha') {
+                // Piranha Burst Logic (Wandering)
+                this.updatePiranhaBurst(deltaTime, false);
+            } else {
+                this.maxSpeed = this.speed * 1.5; // Reset speed
+            }
+
             // Normal Wander
             // Normal Wander
             if (this.config.special !== 'sink' && this.config.special !== 'torpedo') {
@@ -1494,6 +1957,102 @@ class Enemy extends Fish {
         if (this.y < 50) this.applyForce(0, 200);
         if (this.y > worldHeight - 50) this.applyForce(0, -200);
     }
+
+    updatePiranhaBurst(deltaTime, isHunting) {
+        this.burstTimer = (this.burstTimer || 0) + deltaTime;
+
+        // Burst Cycle: Wait -> Twitch -> Burst
+        const cycle = isHunting ? 1.0 : 2.5; // Faster cycle when hunting
+        const burstDuration = isHunting ? 0.4 : 0.3;
+
+        const t = this.burstTimer % cycle;
+
+        if (t < cycle - burstDuration) {
+            // WAIT PHASE (Drift/Twitch)
+            this.maxSpeed = this.speed * 0.1; // Almost stopped
+
+            // Occasional twitch (change direction)
+            if (Math.random() < 0.05) {
+                this.wanderAngle += (Math.random() - 0.5) * Math.PI;
+            }
+        } else {
+            // BURST PHASE
+            this.maxSpeed = this.speed * (isHunting ? 4.5 : 3.5); // EXPLOSIVE SPEED
+        }
+
+        // FLOCKING (Shoal Behavior)
+        // Only apply during the "Wait/Drift" phase to keep them together
+        // During burst, they should just go for it.
+        if (t < cycle - burstDuration) {
+            this.applyFlocking(deltaTime);
+        }
+    }
+
+    applyFlocking(deltaTime) {
+        const perceptionRadius = 200;
+        const alignmentForce = 2;
+        const cohesionForce = 2;
+        const separationForce = 4;
+
+        let steeringX = 0;
+        let steeringY = 0;
+        let total = 0;
+
+        let avgVx = 0;
+        let avgVy = 0;
+        let avgX = 0;
+        let avgY = 0;
+        let separationX = 0;
+        let separationY = 0;
+
+        for (const other of enemies) {
+            if (other !== this && other.config.bodyShape === 'piranha') {
+                const d = Math.hypot(this.x - other.x, this.y - other.y);
+                if (d < perceptionRadius) {
+                    // Alignment
+                    avgVx += other.vx;
+                    avgVy += other.vy;
+
+                    // Cohesion
+                    avgX += other.x;
+                    avgY += other.y;
+
+                    // Separation
+                    const diffX = this.x - other.x;
+                    const diffY = this.y - other.y;
+                    separationX += diffX / (d * d); // Weight by distance
+                    separationY += diffY / (d * d);
+
+                    total++;
+                }
+            }
+        }
+
+        if (total > 0) {
+            // Alignment
+            avgVx /= total;
+            avgVy /= total;
+            steeringX += (avgVx - this.vx) * alignmentForce;
+            steeringY += (avgVy - this.vy) * alignmentForce;
+
+            // Cohesion
+            avgX /= total;
+            avgY /= total;
+            const cohesionDirX = avgX - this.x;
+            const cohesionDirY = avgY - this.y;
+            steeringX += cohesionDirX * cohesionForce * 0.01; // Scale down position diff
+            steeringY += cohesionDirY * cohesionForce * 0.01;
+
+            // Separation
+            separationX /= total;
+            separationY /= total;
+            steeringX += separationX * separationForce * 500; // Scale up separation
+            steeringY += separationY * separationForce * 500;
+        }
+
+        this.applyForce(steeringX, steeringY);
+    }
+
 
     flee(targetX, targetY) {
         const dx = targetX - (this.x + this.width / 2);
@@ -1689,14 +2248,21 @@ class Particle {
         this.x = x;
         this.y = y;
         this.color = color;
-        this.speedY = speed;
+        this.speedY = speed; // Legacy support
+        this.vx = 0; // New velocity support
+        this.vy = 0;
         this.size = size;
         this.alpha = 1;
         this.decay = 0.01 + Math.random() * 0.02;
     }
 
     update() {
-        this.y -= this.speedY;
+        if (this.vx !== 0 || this.vy !== 0) {
+            this.x += this.vx * 0.016; // Approx dt (16ms)
+            this.y += this.vy * 0.016;
+        } else {
+            this.y -= this.speedY; // Legacy behavior
+        }
         this.alpha -= this.decay;
     }
 
@@ -1798,24 +2364,23 @@ class Torpedo {
         ctx.save();
         ctx.translate(this.x, this.y);
 
+        // BURP ANIMATION (Shudder + Open Mouth)
+        let drawJawOpen = this.jawOpen;
+        if (this.burpTimer > 0) {
+            // Shudder Effect
+            const shudderAmount = 5;
+            ctx.translate((Math.random() - 0.5) * shudderAmount, (Math.random() - 0.5) * shudderAmount);
+
+            // Force Mouth Open
+            drawJawOpen = 1.0;
+        }
+
         // Rotate to face velocity
         const angle = Math.atan2(this.vy, this.vx);
         ctx.rotate(angle);
 
-        ctx.fillStyle = this.color;
-        ctx.beginPath();
-        // Torpedo shape
-        ctx.moveTo(0, 0);
-        ctx.lineTo(this.width, this.height / 2);
-        ctx.lineTo(0, this.height);
-        ctx.lineTo(0, 0);
-        ctx.fill();
-
-        // Red tip
-        ctx.fillStyle = 'red';
-        ctx.beginPath();
-        ctx.arc(this.width, this.height / 2, 3, 0, Math.PI * 2);
-        ctx.fill();
+        // Draw the fish
+        drawProceduralFish(ctx, 0, 0, this.width, this.height, this.color, 0, this.time, this.config, drawJawOpen, this.id);
 
         ctx.restore();
     }
@@ -1975,70 +2540,89 @@ function spawnEnemy(worldWidth, worldHeight) {
 
     const config = ARCHETYPES[archetypeKey];
 
-    // Calculate Size
-    // Base size * random scale
-    // Scale base size slightly with difficulty to keep challenge up
-    const scale = config.scaleRange[0] + Math.random() * (config.scaleRange[1] - config.scaleRange[0]);
-    const baseSize = 60 * (1 + difficulty * 0.8); // Enemies grow significantly with difficulty
-    let width = baseSize * scale;
-    let height = width * 0.6; // Aspect ratio
+    // SHOAL SPAWNING (Piranhas)
+    let spawnCount = 1;
+    if (archetypeKey === 'piranha') {
+        spawnCount = 3 + Math.floor(Math.random() * 3); // 3 to 5
+    }
 
-    if (config.bodyShape === 'eel') height = width * 0.3;
-    if (config.bodyShape === 'round') height = width;
-
-    // Spawn from random side
+    // Shared spawn parameters for the shoal
     const side = Math.floor(Math.random() * 4);
-    let x, y, initialVx, initialVy;
     const buffer = 200;
-    const speed = config.baseSpeed;
 
-    switch (side) {
-        case 0: // Right
-            x = worldWidth + buffer;
-            y = Math.random() * worldHeight;
-            initialVx = -speed;
-            initialVy = (Math.random() - 0.5) * speed;
-            break;
-        case 1: // Left
-            x = -buffer;
-            y = Math.random() * worldHeight;
-            initialVx = speed;
-            initialVy = (Math.random() - 0.5) * speed;
-            break;
-        case 2: // Top
-            x = Math.random() * worldWidth;
-            y = -buffer;
+    // Base position for the shoal center
+    let baseX, baseY;
+
+    // Determine base position based on side
+    if (side === 0) { // Top
+        baseX = Math.random() * worldWidth;
+        baseY = -buffer;
+    } else if (side === 1) { // Right
+        baseX = worldWidth + buffer;
+        baseY = Math.random() * worldHeight;
+    } else if (side === 2) { // Bottom
+        baseX = Math.random() * worldWidth;
+        baseY = worldHeight + buffer;
+    } else { // Left
+        baseX = -buffer;
+        baseY = Math.random() * worldHeight;
+    }
+
+    for (let i = 0; i < spawnCount; i++) {
+        // Calculate Size
+        const scale = config.scaleRange[0] + Math.random() * (config.scaleRange[1] - config.scaleRange[0]);
+        const baseSize = 60 * (1 + difficulty * 0.8);
+        let width = baseSize * scale;
+        let height = width * 0.6;
+
+        if (config.bodyShape === 'eel') height = width * 0.3;
+        if (config.bodyShape === 'round') height = width;
+        if (config.bodyShape === 'blob') height = width;
+
+        // Offset from base position for shoal members
+        const offsetX = (Math.random() - 0.5) * 100; // Spread out a bit
+        const offsetY = (Math.random() - 0.5) * 100;
+
+        let x = baseX + offsetX;
+        let y = baseY + offsetY;
+
+        const speed = config.baseSpeed;
+        let initialVx, initialVy;
+
+        if (side === 0) { // Top
             initialVx = (Math.random() - 0.5) * speed;
             initialVy = speed;
-            break;
-        case 3: // Bottom
-            x = Math.random() * worldWidth;
-            y = worldHeight + buffer;
+        } else if (side === 1) { // Right
+            initialVx = -speed;
+            initialVy = (Math.random() - 0.5) * speed;
+        } else if (side === 2) { // Bottom
             initialVx = (Math.random() - 0.5) * speed;
             initialVy = -speed;
-            break;
-    }
+        } else { // Left
+            initialVx = speed;
+            initialVy = (Math.random() - 0.5) * speed;
+        }
 
-    const enemy = new Enemy(x, y, width, height, config);
-
-    // Override behavior for Special Enemies
-    if (config.special === 'sink') {
-        // Diver: Spawn at top, sink down
-        enemy.x = Math.random() * worldWidth;
-        enemy.y = -height * 2;
-        enemy.vx = 0;
-        enemy.vy = config.baseSpeed;
-    } else if (config.special === 'torpedo') {
-        // Submarine: Spawn at side, move straight
-        enemy.vy = 0;
-        // Keep initialVx from switch, but ensure y is deep enough
-        enemy.y = Math.random() * (worldHeight - 200) + 100;
-    } else {
+        const enemy = new Enemy(x, y, width, height, config);
         enemy.vx = initialVx;
         enemy.vy = initialVy;
-    }
 
-    enemies.push(enemy);
+        // Override behavior for Special Enemies
+        if (config.special === 'sink') {
+            // Diver: Spawn at top, sink down
+            enemy.x = Math.random() * worldWidth;
+            enemy.y = -height * 2;
+            enemy.vx = 0;
+            enemy.vy = config.baseSpeed;
+        } else if (config.special === 'torpedo') {
+            // Submarine: Spawn at side, move straight
+            enemy.vy = 0;
+            // Keep initialVx from side logic, but ensure y is deep enough
+            enemy.y = Math.random() * (worldHeight - 200) + 100;
+        }
+
+        enemies.push(enemy);
+    }
 }
 
 let gameTime = 0;
