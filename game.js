@@ -1608,7 +1608,8 @@ class Player extends Fish {
     }
 
     get level() {
-        return Math.floor((this.width - 60) / 10) + 1;
+        // Score-based leveling: Level up every 100 points
+        return Math.floor(score / 100) + 1;
     }
 
     useAbility() {
@@ -1646,7 +1647,9 @@ class Player extends Fish {
         if (this.keys.right) dx += 1;
 
         // Speed increases linearly with size to maintain screen-space speed
-        let currentSpeed = this.speed * (this.width / 60);
+        // FIX: Scale more aggressively so you feel faster even when zoomed out
+        // Power 1.25 ensures speed grows faster than size (and zoom)
+        let currentSpeed = this.speed * Math.pow(this.width / 60, 1.25);
 
         // Catfish Stealth & Boost Logic (Bufferable)
         if (this.config.special === 'stealth') {
@@ -2081,6 +2084,7 @@ let gracePeriod = 0;
 let cameraScale = 1.0;
 let gameMode = '1P'; // '1P' or '2P'
 let selectionPhase = 1; // 1 = P1 Select, 2 = P2 Select
+let currentLevel = 1; // Track level for animation trigger
 
 function resize() {
     canvas.width = window.innerWidth;
@@ -2127,7 +2131,15 @@ function gameLoop(timestamp) {
         if (players.length === 1) {
             // 1 Player Camera
             const p = players[0];
-            targetScale = 60 / Math.max(60, p.width);
+            // LEVEL BASED ZOOM: Zoom out in steps based on level
+            // Level 1 = Scale 1.0
+            // Level 10 = Scale ~0.4
+            const level = p.level;
+            // Increased zoom strength from 0.15 to 0.30 to ensure "zoom out" feeling
+            targetScale = 1.0 / (1 + (level - 1) * 0.30);
+
+            // Clamp min scale to avoid zooming out too far
+            targetScale = Math.max(0.25, targetScale);
             // Center is just player position (handled by translate later? No, we center world on screen)
             // Actually, we don't translate context for position, we just scale.
             // Wait, the original code didn't translate for position?
@@ -2166,7 +2178,7 @@ function gameLoop(timestamp) {
             targetScale = Math.min(scaleDist, scaleSize);
         }
 
-        cameraScale += (targetScale - cameraScale) * 0.02;
+        cameraScale += (targetScale - cameraScale) * 0.005;
     }
 
     // Calculate World Dimensions
@@ -2191,6 +2203,26 @@ function gameLoop(timestamp) {
 
     if (gameState === 'PLAYING' || gameState === 'DYING') {
         updateGame(deltaTime, worldWidth, worldHeight);
+
+        // Update Level Display
+        if (players.length > 0) {
+            // Show P1 level or highest level
+            const displayLevel = players[0].level;
+            document.getElementById('level-value').textContent = displayLevel;
+
+            // Trigger Level Up Animation
+            if (displayLevel > currentLevel) {
+                currentLevel = displayLevel;
+                const msg = document.getElementById('level-up-message');
+                msg.classList.remove('hidden');
+                msg.classList.remove('animate');
+                void msg.offsetWidth; // Trigger reflow to restart animation
+                msg.classList.add('animate');
+
+                // Play sound if available
+                try { soundManager.playPowerUp(); } catch (e) { }
+            }
+        }
 
         // PvP Logic
         if (players.length === 2) {
@@ -2772,7 +2804,7 @@ function updateGame(deltaTime, worldWidth, worldHeight) {
             if (checkCollision(p, enemy)) {
                 if (p.width >= enemy.width) {
                     score += 10;
-                    document.getElementById('score').textContent = score;
+                    document.getElementById('score-value').textContent = score;
 
                     // Shark Burp Trigger
                     if (p.config.bodyShape === 'shark' && enemy.config.bodyShape === 'submarine') {
@@ -2887,7 +2919,8 @@ function startGame(p1Archetype, p2Archetype) {
     gameState = 'PLAYING';
     console.log('gameState set to PLAYING');
     score = 0;
-    document.getElementById('score').textContent = score;
+    currentLevel = 1; // Reset level tracker
+    document.getElementById('score-value').textContent = score;
     document.getElementById('start-screen').classList.add('hidden');
     document.getElementById('start-screen').classList.remove('active');
     console.log('Start screen hidden');
@@ -2965,6 +2998,7 @@ function gameOver(winnerId = null) {
         }
 
         document.getElementById('final-score').textContent = finalScore;
+        document.getElementById('final-level').textContent = currentLevel;
         document.getElementById('high-score').textContent = highScore;
         document.getElementById('game-over-screen').classList.remove('hidden');
         document.getElementById('game-over-screen').style.display = 'flex'; // Use flex to make it visible

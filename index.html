@@ -18,7 +18,17 @@
         <canvas id="gameCanvas"></canvas>
 
         <div id="ui-layer">
-            <div id="score-board">Score: <span id="score">0</span></div>
+            <div id="hud">
+                <div id="level-badge">
+                    <span class="label">LEVEL</span>
+                    <span id="level-value">1</span>
+                </div>
+                <div id="score-badge">
+                    <span class="label">SCORE</span>
+                    <span id="score-value">0</span>
+                </div>
+            </div>
+            <div id="level-up-message" class="hidden">LEVEL UP!</div>
 
 
             <!-- Start Screen -->
@@ -33,6 +43,7 @@
 
             <div id="game-over-screen" class="screen hidden">
                 <h1>Game Over</h1>
+                <p>Level Reached: <span id="final-level">1</span></p>
                 <p>Final Score: <span id="final-score">0</span></p>
                 <p>High Score: <span id="high-score">0</span></p>
                 <button id="restart-btn" class="btn">Play Again</button>

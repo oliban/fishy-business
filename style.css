@@ -47,15 +47,58 @@ canvas {
     z-index: 100;
 }
 
-#score-board {
+#hud {
     position: absolute;
     top: 20px;
     left: 20px;
+    display: flex;
+    gap: 15px;
+    z-index: 10;
+}
+
+#level-badge,
+#score-badge {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(5px);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 8px 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 80px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+#level-badge {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 10px rgba(255, 230, 109, 0.3);
+}
+
+#score-badge {
+    border-color: var(--secondary-color);
+}
+
+.label {
+    font-family: var(--font-body);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 2px;
+}
+
+#level-value,
+#score-value {
     font-family: var(--font-heading);
     font-size: 2rem;
-    color: var(--text-color);
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-    z-index: 10;
+    color: #fff;
+    line-height: 1;
+    text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5);
+}
+
+#level-value {
+    color: var(--accent-color);
 }
 
 .screen {
@@ -252,5 +295,50 @@ p {
 
     50% {
         transform: translateY(-10px);
+    }
+}
+
+/* Level Up Animation */
+#level-up-message {
+    position: absolute;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: var(--font-heading);
+    font-size: 6rem;
+    color: #ffe66d;
+    text-shadow: 0 0 20px #ff7f50, 4px 4px 0 #000;
+    pointer-events: none;
+    z-index: 200;
+    opacity: 0;
+}
+
+#level-up-message.animate {
+    animation: levelUpPop 2s ease-out forwards;
+}
+
+@keyframes levelUpPop {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.5);
+    }
+
+    20% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.2);
+    }
+
+    40% {
+        transform: translate(-50%, -50%) scale(1.0);
+    }
+
+    80% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.0);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -80%) scale(1.0);
     }
 }
