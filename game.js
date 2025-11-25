@@ -2245,7 +2245,7 @@ function gameLoop(timestamp) {
 
 // Particles
 class Particle {
-    constructor(x, y, color, speed, size) {
+    constructor(x, y, color, speed, size, decay = null) {
         this.x = x;
         this.y = y;
         this.color = color;
@@ -2254,7 +2254,8 @@ class Particle {
         this.vy = 0;
         this.size = size;
         this.alpha = 1;
-        this.decay = 0.01 + Math.random() * 0.02;
+        // Default decay is fast (original behavior), or use custom decay
+        this.decay = decay !== null ? decay : (0.01 + Math.random() * 0.02);
     }
 
     update() {
@@ -2289,6 +2290,14 @@ class Torpedo {
         this.color = '#2d3436';
         this.timer = 0;
         this.owner = owner;
+        // Fix for crash: Ensure config exists for drawProceduralFish
+        this.config = {
+            bodyShape: 'torpedo',
+            color: this.color,
+            finStyle: 'none',
+            hasTeeth: false,
+            texture: 'none'
+        };
     }
 
     update(deltaTime) {
@@ -2353,9 +2362,25 @@ class Torpedo {
         this.x += this.vx * deltaTime;
         this.y += this.vy * deltaTime;
 
-        // Bubble trail
-        if (Math.random() < 0.3) {
-            particles.push(new Particle(this.x, this.y, 'rgba(255, 255, 255, 0.5)', 0, 2));
+        // Bubble trail - HIGH VISIBILITY
+        // Spawn frequently (every frame or high chance)
+        if (Math.random() < 0.8) {
+            // Randomize position slightly for natural trail
+            const offsetX = (Math.random() - 0.5) * 5;
+            const offsetY = (Math.random() - 0.5) * 5;
+
+            // Long life: 3 seconds at 60fps = 180 frames. 
+            // Decay = 1.0 / 180 ≈ 0.0055
+            const decay = 0.005 + Math.random() * 0.002;
+
+            particles.push(new Particle(
+                this.x + offsetX,
+                this.y + offsetY,
+                'rgba(255, 255, 255, 0.6)', // Slightly more opaque
+                0,
+                2 + Math.random() * 2, // Varied size
+                decay // Custom slow decay
+            ));
         }
 
         return false;
