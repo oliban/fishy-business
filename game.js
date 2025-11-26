@@ -173,10 +173,24 @@ function seededRandom(seed) {
     return x - Math.floor(x);
 }
 
-function drawProceduralFish(ctx, x, y, width, height, color, angle, time, config, jawOpen = 0, id = 0) {
+function drawProceduralFish(ctx, x, y, width, height, color, angle, time, config, jawOpen = 0, burpTimer = 0, id = 0) {
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
+
+    // Burp Shudder Effect
+    if (burpTimer > 0) {
+        // Intensity scales with size (10% of width), fades out over 2.0s
+        const intensity = width * 0.1;
+        const shudderAmount = intensity * (burpTimer / 2.0);
+        const sx = (Math.random() - 0.5) * shudderAmount;
+        const sy = (Math.random() - 0.5) * shudderAmount;
+        ctx.translate(sx, sy);
+    }
+
+    // Flip if swimming left (handled by scale in Player.draw, but here we draw local)
+    // Actually, Player.draw handles the flip with scale(-1, 1).
+    // So we just draw facing right.
 
     // Tail Animation
     const tailWag = Math.sin(time * 10) * 0.2;
@@ -1415,7 +1429,7 @@ class Fish {
         }
 
         // Draw fish at 0,0 in local space
-        drawProceduralFish(ctx, 0, 0, this.width, this.height, this.color, angle, this.time, this.config, drawJawOpen);
+        drawProceduralFish(ctx, 0, 0, this.width, this.height, this.color, angle, this.time, this.config, drawJawOpen, this.burpTimer, this.playerId);
 
         ctx.restore();
     }
@@ -1631,6 +1645,47 @@ class Player extends Fish {
         this.time += deltaTime;
 
         if (this.abilityCooldown > 0) this.abilityCooldown -= deltaTime;
+
+        // Burp Logic
+        if (this.burpTimer > 0) {
+            this.burpTimer -= deltaTime;
+            if (this.burpTimer <= 0) {
+                this.burpTimer = 0;
+                // SPIT TORPEDO!
+                // Calculate direction based on movement or default to facing right/left
+                // If moving, use velocity. If still, use last facing? 
+                // We don't track "facing" explicitly other than vx.
+                // Let's assume facing right if vx >= 0, left if vx < 0.
+
+                let dirX = 1;
+                let dirY = 0;
+
+                if (Math.abs(this.vx) > 10 || Math.abs(this.vy) > 10) {
+                    const speed = Math.hypot(this.vx, this.vy);
+                    dirX = this.vx / speed;
+                    dirY = this.vy / speed;
+                } else {
+                    // Default to facing direction based on last move?
+                    // Just shoot right for now, or random?
+                    // Let's shoot in the direction of the "mouth" which is usually forward.
+                    // We can use the angle from draw? 
+                    // this.vx determines angle in draw.
+                    // If vx is 0, angle is 0 (Right).
+                }
+
+                const torpedoSpeed = 400;
+                spawnTorpedo(
+                    this.x + this.width / 2 + dirX * (this.width / 2 + 20),
+                    this.y + this.height / 2 + dirY * (this.width / 2 + 20),
+                    dirX * torpedoSpeed,
+                    dirY * torpedoSpeed,
+                    this // Owner
+                );
+
+                try { soundManager.playBurp(); } catch (e) { }
+                try { soundManager.playShoot(); } catch (e) { }
+            }
+        }
 
         // Automatic Ability Trigger REMOVED for manual control
         // if (this.config.special === 'ink' && this.abilityCooldown <= 0) {
@@ -1931,18 +1986,34 @@ class Enemy extends Fish {
                 // Visuals (Bubbles)
                 for (let i = 0; i < 8; i++) {
                     particles.push(new Particle(
-                        this.x + this.width / 2 + (this.facingRight ? this.width / 2 : -this.width / 2),
+                        this.x + this.width / 2 + (this.vx > 0 ? this.width / 2 : -this.width / 2),
                         this.y + this.height / 2,
                         '#00ffff', // Cyan
                         Math.random() * 2 + 1, // Speed
                         Math.random() * 3 + 2  // Size
                     ));
                 }
-                const vx = this.vx > 0 ? 400 : -400; // Fire in direction of movement
-                projectiles.push(new Torpedo(
-                    this.x + this.width / 2 + (this.vx > 0 ? this.width / 2 : -this.width / 2),
-                    this.y + this.height / 2,
-                ));
+
+                // Calculate direction based on movement
+                let dirX = 1;
+                let dirY = 0;
+                const speed = Math.hypot(this.vx, this.vy);
+                if (speed > 1) {
+                    dirX = this.vx / speed;
+                    dirY = this.vy / speed;
+                } else {
+                    // Fallback if stationary (unlikely for enemy)
+                    dirX = this.vx >= 0 ? 1 : -1;
+                }
+
+                const torpedoSpeed = 400;
+                spawnTorpedo(
+                    this.x + this.width / 2 + dirX * (this.width / 2 + 20),
+                    this.y + this.height / 2 + dirY * (this.width / 2 + 20),
+                    dirX * torpedoSpeed,
+                    dirY * torpedoSpeed,
+                    this // Owner
+                );
             }
         }
 
@@ -2422,23 +2493,27 @@ class Torpedo {
         ctx.save();
         ctx.translate(this.x, this.y);
 
-        // BURP ANIMATION (Shudder + Open Mouth)
-        let drawJawOpen = this.jawOpen;
-        if (this.burpTimer > 0) {
-            // Shudder Effect
-            const shudderAmount = 5;
-            ctx.translate((Math.random() - 0.5) * shudderAmount, (Math.random() - 0.5) * shudderAmount);
-
-            // Force Mouth Open
-            drawJawOpen = 1.0;
-        }
-
         // Rotate to face velocity
         const angle = Math.atan2(this.vy, this.vx);
         ctx.rotate(angle);
 
-        // Draw the fish
-        drawProceduralFish(ctx, 0, 0, this.width, this.height, this.color, 0, this.time, this.config, drawJawOpen, this.id);
+        // Arming Visuals
+        if (this.timer >= 1.0) {
+            // ARMED: Red Glow
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#ff4757';
+            // Pulsing Red Body
+            const pulse = Math.sin(this.timer * 10) * 0.5 + 0.5;
+            this.config.color = `rgb(${255}, ${71 * pulse}, ${87 * pulse})`; // Pulse towards white/red
+        } else {
+            // UNARMED: Dark Grey
+            ctx.shadowBlur = 0;
+            this.config.color = '#2d3436';
+        }
+
+        // Draw the fish (Torpedo shape)
+        // Note: Torpedo doesn't use jawOpen or burpTimer, passing 0
+        drawProceduralFish(ctx, 0, 0, this.width, this.height, this.config.color, 0, this.timer, this.config, 0, 0, 0);
 
         ctx.restore();
     }
@@ -2539,6 +2614,11 @@ function createEatingEffect(x, y, color) {
         p.speedY = (Math.random() - 0.5) * 8; // Override speedY for explosion
         particles.push(p);
     }
+}
+
+function spawnTorpedo(x, y, vx, vy, owner) {
+    const t = new Torpedo(x, y, vx, vy, owner);
+    projectiles.push(t);
 }
 
 function spawnEnemy(worldWidth, worldHeight) {
@@ -2717,6 +2797,7 @@ function updateGame(deltaTime, worldWidth, worldHeight) {
     // Update Projectiles
     for (let i = projectiles.length - 1; i >= 0; i--) {
         const p = projectiles[i];
+        if (!p) continue; // Safety check
         const shouldExplode = p.update(deltaTime);
 
         if (shouldExplode) {
@@ -2736,10 +2817,40 @@ function updateGame(deltaTime, worldWidth, worldHeight) {
             continue;
         }
 
+        // Check Collision with Other Torpedoes
+        let hitOtherTorpedo = false;
+        for (let j = i - 1; j >= 0; j--) {
+            const other = projectiles[j];
+            // Safety: Both must be armed to collide
+            if (p.timer < 1.0 || other.timer < 1.0) continue;
+
+            // Proximity Check (Explode if close, don't need direct hit)
+            const dist = Math.hypot(p.x - other.x, p.y - other.y);
+            if (dist < 40) { // 40px proximity radius
+                // Explode BOTH
+                createExplosion(p.x, p.y);
+                createExplosion(other.x, other.y);
+                try { soundManager.playExplosion(); } catch (e) { }
+
+                // Remove both (careful with indices)
+                projectiles.splice(i, 1); // Remove current (higher index)
+                projectiles.splice(j, 1); // Remove other (lower index)
+
+                i--; // Adjust index because we removed an element (j) below i
+
+                hitOtherTorpedo = true;
+                break; // Stop processing current 'p'
+            }
+        }
+        if (hitOtherTorpedo) continue; // Skip to next projectile (since 'p' is gone)
+
         // Check Collision with Players
         if (gracePeriod <= 0) {
             for (let k = players.length - 1; k >= 0; k--) {
                 const player = players[k];
+                // Safety: Torpedo must be armed (timer >= 1.0)
+                if (p.timer < 1.0) continue;
+
                 if (checkCollision(p, player)) {
                     // Player Hit!
                     createExplosion(player.x, player.y); // Explosion Effect
@@ -2765,8 +2876,8 @@ function updateGame(deltaTime, worldWidth, worldHeight) {
         for (let j = enemies.length - 1; j >= 0; j--) {
             const enemy = enemies[j];
             if (checkCollision(p, enemy)) {
-                // Submarine Fix: Don't hit owner immediately
-                if (p.owner === enemy && p.timer < 2.0) continue;
+                // Safety: Torpedo must be armed (timer >= 1.0)
+                if (p.timer < 1.0) continue;
 
                 createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
                 createEatingEffect(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.color);
@@ -2809,7 +2920,7 @@ function updateGame(deltaTime, worldWidth, worldHeight) {
                     // Shark Burp Trigger
                     if (p.config.bodyShape === 'shark' && enemy.config.bodyShape === 'submarine') {
                         // Always burp on submarine
-                        p.burpTimer = 1.0;
+                        p.burpTimer = 2.0;
                     }
 
                     p.grow(enemy.width); // Pass prey size
@@ -2861,7 +2972,7 @@ function updateGame(deltaTime, worldWidth, worldHeight) {
                         if (enemy.config.bodyShape === 'shark' && other.config.bodyShape === 'submarine') {
                             // Enemy Shark Burp
                             // Always burp on submarine
-                            enemy.burpTimer = 1.0;
+                            enemy.burpTimer = 2.0;
 
                             // Clonk + No Blood
                             try { soundManager.playClonk(); } catch (e) { }
@@ -2920,6 +3031,8 @@ function startGame(p1Archetype, p2Archetype) {
     console.log('gameState set to PLAYING');
     score = 0;
     currentLevel = 1; // Reset level tracker
+    cameraScale = 1.0; // Reset camera zoom
+    gameTime = 0; // Reset game time
     document.getElementById('score-value').textContent = score;
     document.getElementById('start-screen').classList.add('hidden');
     document.getElementById('start-screen').classList.remove('active');
