@@ -1349,6 +1349,8 @@ class Fish {
         if (this.vy !== 0 || this.vx !== 0) {
             // Simple tilt
             angle = this.vy * 0.002;
+            // Clamp angle to prevent flipping (max 45 degrees approx)
+            angle = Math.max(-0.8, Math.min(0.8, angle));
         }
 
         // Flip context if facing left
@@ -1507,7 +1509,7 @@ class Fish {
         this.jawOpen -= 0.1;
         this.jawOpen = Math.max(0, Math.min(1, this.jawOpen));
 
-        if (dist > 0 && dist < this.visionRadius) {
+        if (dist > 0) {
             const desiredVx = -(dx / dist) * this.maxSpeed; // Reverse direction
             const desiredVy = -(dy / dist) * this.maxSpeed;
 
@@ -1704,7 +1706,7 @@ class Player extends Fish {
         // Speed increases linearly with size to maintain screen-space speed
         // FIX: Scale more aggressively so you feel faster even when zoomed out
         // Power 1.25 ensures speed grows faster than size (and zoom)
-        let currentSpeed = this.speed * Math.pow(this.width / 60, 1.25);
+        let currentSpeed = this.speed;
 
         // Catfish Stealth & Boost Logic (Bufferable)
         if (this.config.special === 'stealth') {
@@ -1757,7 +1759,7 @@ class Player extends Fish {
             }
         }
 
-        if (nearestEdible < 150) { // Reverted to 150
+        if (nearestEdible < this.width + 150) { // Scale with size
             this.jawOpen += 0.2; // Faster opening
         } else {
             this.jawOpen -= 0.1;
@@ -1841,7 +1843,7 @@ class Enemy extends Fish {
 
                 // Skip normal fear logic for player
                 continue; // Move to next player or skip to decision making
-            } else if (dPlayer < this.visionRadius) {
+            } else if (dPlayer < this.visionRadius + p.width / 2) { // Account for player size
                 if (p.width > this.width * 1.1) {
                     if (dPlayer < minPredatorDist) {
                         minPredatorDist = dPlayer;
@@ -2207,7 +2209,7 @@ function gameLoop(timestamp) {
             // Level 10 = Scale ~0.4
             const level = p.level;
             // Increased zoom strength from 0.15 to 0.30 to ensure "zoom out" feeling
-            targetScale = 1.0 / (1 + (level - 1) * 0.30);
+            targetScale = 1.0;
 
             // Clamp min scale to avoid zooming out too far
             targetScale = Math.max(0.25, targetScale);
@@ -2709,7 +2711,9 @@ function spawnEnemy(worldWidth, worldHeight) {
     for (let i = 0; i < spawnCount; i++) {
         // Calculate Size
         const scale = config.scaleRange[0] + Math.random() * (config.scaleRange[1] - config.scaleRange[0]);
-        const baseSize = 60 * (1 + difficulty * 0.8);
+
+        const baseSize = 60;
+
         let width = baseSize * scale;
         let height = width * 0.6;
 
@@ -2724,6 +2728,8 @@ function spawnEnemy(worldWidth, worldHeight) {
         let x = baseX + offsetX;
         let y = baseY + offsetY;
 
+        // Speed Scaling: Enemy speed scales exactly with world scale
+        // This ensures relative speed remains constant on screen
         const speed = config.baseSpeed;
         let initialVx, initialVy;
 
